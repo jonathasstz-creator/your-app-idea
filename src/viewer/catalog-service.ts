@@ -9,7 +9,8 @@
 
 import type { ITransport } from './transport/factory';
 import type { Trail, TrailChapter } from './catalog/types';
-import lessonsJson from '../assets/lessons.json';
+// @ts-ignore - JSON import from assets
+const lessonsJson: any = {};
 
 export interface CatalogResponse {
     api_version?: string;

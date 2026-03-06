@@ -58,12 +58,12 @@ export class LocalTransportDriver {
       60;
 
     // beat atual com bpm antigo
-    const elapsedMs = nowMs - this.basePerfMs;
-    const currentBeat = this.baseBeat + (elapsedMs / 60000) * oldBpm;
+    const elapsedMs = nowMs - ((this as any).basePerfMs ?? nowMs);
+    const currentBeat = ((this as any).baseBeat ?? 0) + (elapsedMs / 60000) * oldBpm;
 
     // reancora
-    this.baseBeat = currentBeat;
-    this.basePerfMs = nowMs;
+    (this as any).baseBeat = currentBeat;
+    (this as any).basePerfMs = nowMs;
 
     (this as any).bpm = newBpm;
 

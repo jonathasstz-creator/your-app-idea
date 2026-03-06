@@ -171,13 +171,13 @@ class LessonEngineV1 implements LessonEngineApi {
     this.notifyEnded();
   }
 
-  onMidiInput(midi: number, velocity: number, isOn: boolean) {
+  onMidiInput(midi: number, velocity: number, isOn: boolean): { advanced: boolean; result: ResultStatus; score: number; streak: number } {
     if (this.isEnded || !this.lesson || !isOn || velocity === 0) {
-      return { advanced: false as const, result: 'NONE' as const, score: this.score, streak: this.streak };
+      return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
     }
 
     const note = this.notes[this.currentStep];
-    if (!note) return { advanced: false as const, result: 'NONE' as const, score: this.score, streak: this.streak };
+    if (!note) return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
 
     const midiInt = Math.round(midi);
     const expectedMidi = note.midi;
@@ -185,12 +185,12 @@ class LessonEngineV1 implements LessonEngineApi {
     if (expectedMidi === midiInt) {
       this.logAttempt(midiInt, expectedMidi, true);
       this.onStepComplete('HIT');
-      return { advanced: true, result: 'HIT', score: this.score, streak: this.streak };
+      return { advanced: true, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
     }
 
     this.logAttempt(midiInt, expectedMidi, false);
     this.onStepComplete('MISS');
-    return { advanced: false, result: 'MISS', score: this.score, streak: this.streak };
+    return { advanced: false, result: 'MISS' as ResultStatus, score: this.score, streak: this.streak };
   }
 
   tickFilm(
@@ -553,13 +553,13 @@ class LessonEngineV2 implements LessonEngineApi {
     this.notifyEnded();
   }
 
-  onMidiInput(midi: number, velocity: number, isOn: boolean) {
+  onMidiInput(midi: number, velocity: number, isOn: boolean): { advanced: boolean; result: ResultStatus; score: number; streak: number } {
     if (this.isEnded || !this.lesson || !isOn || velocity === 0) {
-      return { advanced: false as const, result: 'NONE' as const, score: this.score, streak: this.streak };
+      return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
     }
 
     const targetStep = this.steps[this.currentStep];
-    if (!targetStep) return { advanced: false as const, result: 'NONE' as const, score: this.score, streak: this.streak };
+    if (!targetStep) return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
 
     const midiInt = Math.round(midi);
     const chordNotes = Array.isArray(targetStep.notes) ? targetStep.notes : [];
