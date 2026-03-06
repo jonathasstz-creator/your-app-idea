@@ -571,18 +571,18 @@ class LessonEngineV2 implements LessonEngineApi {
       this.logAttempt(midiInt, expectedMidi, true);
       if (isComplete) {
         this.onStepComplete('HIT');
-        return { advanced: true, result: 'HIT', score: this.score, streak: this.streak };
+        return { advanced: true, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
       }
-      return { advanced: false, result: 'HIT', score: this.score, streak: this.streak };
+      return { advanced: false, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
     }
 
     if (!chordNotes.includes(midiInt)) {
       this.logAttempt(midiInt, expectedMidi, false);
       this.onStepComplete('MISS');
-      return { advanced: false, result: 'MISS', score: this.score, streak: this.streak };
+      return { advanced: false, result: 'MISS' as ResultStatus, score: this.score, streak: this.streak };
     }
 
-    return { advanced: false, result: 'NONE', score: this.score, streak: this.streak };
+    return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
   }
 
   tickFilm(
