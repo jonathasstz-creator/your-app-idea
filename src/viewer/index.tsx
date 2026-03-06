@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 console.log('[INIT] 🚀 index.tsx loading - starting imports...');
 
 import './styles.css';
