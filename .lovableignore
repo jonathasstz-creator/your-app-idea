@@ -1,0 +1,51 @@
+# Lovable upload - manter abaixo de 5MB
+# Não inclua estes ao subir o projeto
+
+# Dependências npm (Lovable instala com npm install)
+node_modules/
+viewer/node_modules/
+
+# Build / cache
+dist/
+viewer/dist/
+.vite/
+viewer/.vite/
+*.local
+
+# Ambiente e segredos
+.env
+.env.*
+backend/.env
+
+# Python (não usado no Lovable)
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Git (não enviar histórico)
+.git/
+
+# Dados locais e analytics
+data/
+
+# Backend e código servidor (Lovable é frontend)
+backend/
+core/
+adapters/
+managers/
+notation/
+ui/
+tools/
+utils/
+
+# Testes e docs (opcional - remova da lista se quiser subir)
+# tests/
+# docs/
+# Bugfixes/
+# bugs/
+# claude-files/
+
+# Logs
+logs/
+*.log

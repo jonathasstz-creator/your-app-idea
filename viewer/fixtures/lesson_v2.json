@@ -1,0 +1,34 @@
+{
+  "type": "lesson_content",
+  "schema_version": 2,
+  "session_id": "sess-v2-fixture",
+  "lesson_id": "lesson-v2-fixture",
+  "chapter_id": 1,
+  "lesson_version": 1,
+  "bpm": 120,
+  "beats_per_measure": 4,
+  "count_in_beats": 4,
+  "total_steps": 2,
+  "evaluation": {
+    "hit_window_ms": 120,
+    "late_miss_ms": 500,
+    "early_accept_ms": 150
+  },
+  "score": {
+    "xml_text": "<score-partwise></score-partwise>"
+  },
+  "steps": [
+    {
+      "step_index": 0,
+      "start_beat": 0,
+      "duration_beats": 1,
+      "notes": [60, 64, 67]
+    },
+    {
+      "step_index": 1,
+      "start_beat": 1,
+      "duration_beats": 1,
+      "notes": [62]
+    }
+  ]
+}

@@ -1,0 +1,814 @@
+{
+  "modules": [
+    {
+      "id": "treble",
+      "title": "Clave de Sol",
+      "chapters": [
+        {
+          "chapter_id": 1,
+          "title": "Primeiros Passos — Mi e Sol",
+          "description": "Aprenda as notas E4 e G4.",
+          "allowed_notes": [
+            "E4",
+            "G4"
+          ]
+        },
+        {
+          "chapter_id": 2,
+          "title": "Fá — o Primeiro Espaço",
+          "description": "Adicionando a nota F4.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4"
+          ]
+        },
+        {
+          "chapter_id": 3,
+          "title": "Lá — Segundo Espaço",
+          "description": "Adicionando a nota A4.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4"
+          ]
+        },
+        {
+          "chapter_id": 4,
+          "title": "Polifonia: Escala em Oitavas",
+          "description": "Teste de polifonia com oitavas paralelas (C3+C4 até C4+C5).",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4",
+            "B4",
+            "C3",
+            "D3",
+            "E3",
+            "F3",
+            "G3",
+            "A3",
+            "B3",
+            "C4",
+            "D4",
+            "C5"
+          ]
+        },
+        {
+          "chapter_id": 5,
+          "title": "Dó — Terceiro Espaço",
+          "description": "Adicionando a nota C5.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4",
+            "B4",
+            "C5"
+          ]
+        },
+        {
+          "chapter_id": 6,
+          "title": "Ré — Quarta Linha",
+          "description": "Adicionando a nota D5.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4",
+            "B4",
+            "C5",
+            "D5"
+          ]
+        },
+        {
+          "chapter_id": 7,
+          "title": "Mi Agudo — Quarto Espaço",
+          "description": "Adicionando a nota E5.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4",
+            "B4",
+            "C5",
+            "D5",
+            "E5"
+          ]
+        },
+        {
+          "chapter_id": 8,
+          "title": "Fá — Topo da Pauta",
+          "description": "Adicionando a nota F5.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4",
+            "B4",
+            "C5",
+            "D5",
+            "E5",
+            "F5"
+          ]
+        },
+        {
+          "chapter_id": 9,
+          "title": "Campo Quase Completo",
+          "description": "Adicionando a nota C4 (Dó Central).",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4",
+            "B4",
+            "C5",
+            "D5",
+            "E5",
+            "F5",
+            "C4"
+          ]
+        },
+        {
+          "chapter_id": 10,
+          "title": "Extensão Superior — Lá",
+          "description": "Adicionando a nota A5.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4",
+            "B4",
+            "C5",
+            "D5",
+            "E5",
+            "F5",
+            "C4",
+            "A5"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bass",
+      "title": "Clave de Fá",
+      "chapters": [
+        {
+          "chapter_id": 11,
+          "title": "Primeiros Passos Graves — Sol e Si",
+          "description": "Aprenda as notas G2 e B2.",
+          "allowed_notes": [
+            "G2",
+            "B2"
+          ]
+        },
+        {
+          "chapter_id": 12,
+          "title": "Lá — Primeiro Espaço Grave",
+          "description": "Adicionando a nota A2.",
+          "allowed_notes": [
+            "G2",
+            "B2",
+            "A2"
+          ]
+        },
+        {
+          "chapter_id": 13,
+          "title": "Dó — Segundo Espaço Grave",
+          "description": "Adicionando a nota C3.",
+          "allowed_notes": [
+            "G2",
+            "B2",
+            "A2",
+            "C3"
+          ]
+        },
+        {
+          "chapter_id": 14,
+          "title": "Ré — Terceira Linha Grave",
+          "description": "Adicionando a nota D3.",
+          "allowed_notes": [
+            "G2",
+            "B2",
+            "A2",
+            "C3",
+            "D3"
+          ]
+        },
+        {
+          "chapter_id": 15,
+          "title": "Mi — Terceiro Espaço Grave",
+          "description": "Adicionando a nota E3.",
+          "allowed_notes": [
+            "G2",
+            "B2",
+            "A2",
+            "C3",
+            "D3",
+            "E3"
+          ]
+        },
+        {
+          "chapter_id": 16,
+          "title": "Fá — Quarta Linha Grave",
+          "description": "Adicionando a nota F3.",
+          "allowed_notes": [
+            "G2",
+            "B2",
+            "A2",
+            "C3",
+            "D3",
+            "E3",
+            "F3"
+          ]
+        },
+        {
+          "chapter_id": 17,
+          "title": "Sol — Quarto Espaço Grave",
+          "description": "Adicionando a nota G3.",
+          "allowed_notes": [
+            "G2",
+            "B2",
+            "A2",
+            "C3",
+            "D3",
+            "E3",
+            "F3",
+            "G3"
+          ]
+        },
+        {
+          "chapter_id": 18,
+          "title": "Lá — Topo da Pauta Grave",
+          "description": "Adicionando a nota A3.",
+          "allowed_notes": [
+            "G2",
+            "B2",
+            "A2",
+            "C3",
+            "D3",
+            "E3",
+            "F3",
+            "G3",
+            "A3"
+          ]
+        },
+        {
+          "chapter_id": 19,
+          "title": "Campo Quase Completo — Clave de Fá",
+          "description": "Adicionando a nota C4 (Dó Central).",
+          "allowed_notes": [
+            "G2",
+            "B2",
+            "A2",
+            "C3",
+            "D3",
+            "E3",
+            "F3",
+            "G3",
+            "A3",
+            "C4"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grand_staff",
+      "title": "Leitura em Grande Pauta",
+      "chapters": [
+        {
+          "chapter_id": 21,
+          "title": "Grande Pauta: Introdução",
+          "description": "Alternando 3 notas em cada clave.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "G2",
+            "B2",
+            "A2"
+          ]
+        },
+        {
+          "chapter_id": 22,
+          "title": "Grande Pauta: Expandindo",
+          "description": "Adicionando mais 2 notas em cada clave.",
+          "allowed_notes": [
+            "E4",
+            "G4",
+            "F4",
+            "A4",
+            "B4",
+            "G2",
+            "B2",
+            "A2",
+            "C3",
+            "D3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hands_together",
+      "title": "Mãos Juntas",
+      "chapters": [
+        {
+          "chapter_id": 23,
+          "title": "Maos Juntas: Escala de Do Maior",
+          "description": "Toque com as duas maos na escala de Do Maior (C3-C4 esquerda, C4-C5 direita).",
+          "allowed_notes": [
+            "C3",
+            "D3",
+            "E3",
+            "F3",
+            "G3",
+            "A3",
+            "B3",
+            "C4",
+            "D4",
+            "E4",
+            "F4",
+            "G4",
+            "A4",
+            "B4",
+            "C5"
+          ],
+          "difficulty": "polyphonic_v2"
+        }
+      ]
+    },
+    {
+      "id": "hands_together_poly",
+      "title": "Mãos Juntas Polifonia",
+      "chapters": [
+        {
+          "chapter_id": 99,
+          "title": "C3-C5 Hands Together",
+          "description": "Polifonia mãos juntas entre C3 e C5.",
+          "allowed_notes": [
+            "C3",
+            "D3",
+            "E3",
+            "F3",
+            "G3",
+            "A3",
+            "B3",
+            "C4",
+            "D4",
+            "E4",
+            "F4",
+            "G4",
+            "A4",
+            "B4",
+            "C5"
+          ],
+          "difficulty": "polyphonic_v2"
+        },
+        {
+          "chapter_id": 31,
+          "title": "Polifonia 2+2: Iniciante",
+          "description": "Polifonia mãos juntas: 2 notas por mão (C3-D3 esq, C4-D4 dir).",
+          "allowed_notes": ["C3", "D3", "C4", "D4"],
+          "difficulty": "polyphonic_v2"
+        },
+        {
+          "chapter_id": 32,
+          "title": "Polifonia 3+3: Expandindo",
+          "description": "Polifonia mãos juntas: 3 notas por mão (C3-E3 esq, C4-E4 dir).",
+          "allowed_notes": ["C3", "D3", "E3", "C4", "D4", "E4"],
+          "difficulty": "polyphonic_v2"
+        },
+        {
+          "chapter_id": 33,
+          "title": "Polifonia 4+4: Tetracorde",
+          "description": "Polifonia mãos juntas: 4 notas por mão (C3-F3 esq, C4-F4 dir).",
+          "allowed_notes": ["C3", "D3", "E3", "F3", "C4", "D4", "E4", "F4"],
+          "difficulty": "polyphonic_v2"
+        },
+        {
+          "chapter_id": 34,
+          "title": "Polifonia 5+5: Posição 5 Dedos",
+          "description": "Polifonia mãos juntas: 5 notas por mão (C3-G3 esq, C4-G4 dir).",
+          "allowed_notes": ["C3", "D3", "E3", "F3", "G3", "C4", "D4", "E4", "F4", "G4"],
+          "difficulty": "polyphonic_v2"
+        },
+        {
+          "chapter_id": 35,
+          "title": "Polifonia 6+6: Expandido",
+          "description": "Polifonia mãos juntas: 6 notas por mão (C3-A3 esq, C4-A4 dir).",
+          "allowed_notes": ["C3", "D3", "E3", "F3", "G3", "A3", "C4", "D4", "E4", "F4", "G4", "A4"],
+          "difficulty": "polyphonic_v2"
+        },
+        {
+          "chapter_id": 36,
+          "title": "Polifonia 8+8: Oitava Completa",
+          "description": "Polifonia mãos juntas: escala completa C3-C4 esq, C4-C5 dir.",
+          "allowed_notes": ["C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"],
+          "difficulty": "polyphonic_v2"
+        },
+        {
+          "chapter_id": 41,
+          "title": "Acordes Mão Direita: Tríade (3 Notas)",
+          "description": "Acordes de 2 notas simultâneas na mão direita — pool: C4, E4, G4.",
+          "allowed_notes": ["C4", "E4", "G4"],
+          "difficulty": "chords_v2"
+        },
+        {
+          "chapter_id": 42,
+          "title": "Acordes Mão Direita: 4 Notas",
+          "description": "Acordes de 2 notas simultâneas na mão direita — pool: C4-G4.",
+          "allowed_notes": ["C4", "D4", "E4", "G4"],
+          "difficulty": "chords_v2"
+        },
+        {
+          "chapter_id": 43,
+          "title": "Acordes Mão Direita: 5 Notas",
+          "description": "Acordes de 2 notas simultâneas na mão direita — pool: C4-G4 completo.",
+          "allowed_notes": ["C4", "D4", "E4", "F4", "G4"],
+          "difficulty": "chords_v2"
+        },
+        {
+          "chapter_id": 44,
+          "title": "Acordes Mão Direita: 6 Notas",
+          "description": "Acordes de 2 notas simultâneas na mão direita — pool: C4-A4.",
+          "allowed_notes": ["C4", "D4", "E4", "F4", "G4", "A4"],
+          "difficulty": "chords_v2"
+        },
+        {
+          "chapter_id": 45,
+          "title": "Acordes Mão Direita: Escala Completa",
+          "description": "Acordes de 2 notas simultâneas na mão direita — escala completa C4-B4.",
+          "allowed_notes": ["C4", "D4", "E4", "F4", "G4", "A4", "B4"],
+          "difficulty": "chords_v2"
+        }
+      ]
+    }
+  ],
+  "trails": [
+    {
+      "trail_id": "reading_foundation",
+      "title": "Fundação da Leitura Musical",
+      "subtitle": "Pare de adivinhar. Comece a ler.",
+      "feature_flag": "showNewCurriculum",
+      "levels": [
+        {
+          "level_id": "beginner",
+          "title": "Nível 1 — Iniciante",
+          "modules": [
+            {
+              "module_id": "treble_p1",
+              "title": "Clave de Sol",
+              "subtitle": "Mão Direita · Dentro da Pauta",
+              "hand": "right",
+              "chapters": [
+                {
+                  "chapter_id": 101,
+                  "title": "Âncoras Sol — Sol e Dó",
+                  "description": "Dois pontos de referência na pauta. Sol na 2ª linha e Dó no 3º espaço.",
+                  "allowed_notes": ["G4", "C5"],
+                  "skill_tags": ["Leitura"]
+                },
+                {
+                  "chapter_id": 102,
+                  "title": "Zona Central — Si",
+                  "description": "Adicionando Si na 3ª linha.",
+                  "allowed_notes": ["G4", "C5", "B4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [101]
+                },
+                {
+                  "chapter_id": 103,
+                  "title": "Descendo — Lá",
+                  "description": "Adicionando Lá no 2º espaço.",
+                  "allowed_notes": ["G4", "C5", "B4", "A4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [102]
+                },
+                {
+                  "chapter_id": 104,
+                  "title": "Fá — o Primeiro Espaço",
+                  "description": "Adicionando Fá no 1º espaço.",
+                  "allowed_notes": ["G4", "C5", "B4", "A4", "F4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [103]
+                },
+                {
+                  "chapter_id": 105,
+                  "title": "Mi — a Base da Pauta",
+                  "description": "Adicionando Mi na 1ª linha.",
+                  "allowed_notes": ["G4", "C5", "B4", "A4", "F4", "E4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [104]
+                },
+                {
+                  "chapter_id": 106,
+                  "title": "Subindo — Ré Agudo",
+                  "description": "Adicionando Ré na 4ª linha.",
+                  "allowed_notes": ["G4", "C5", "B4", "A4", "F4", "E4", "D5"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [105]
+                },
+                {
+                  "chapter_id": 107,
+                  "title": "Subindo — Mi Agudo",
+                  "description": "Adicionando Mi no 4º espaço.",
+                  "allowed_notes": ["G4", "C5", "B4", "A4", "F4", "E4", "D5", "E5"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [106]
+                },
+                {
+                  "chapter_id": 108,
+                  "title": "Topo da Pauta — Fá",
+                  "description": "Adicionando Fá na 5ª linha.",
+                  "allowed_notes": ["G4", "C5", "B4", "A4", "F4", "E4", "D5", "E5", "F5"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [107]
+                },
+                {
+                  "chapter_id": 109,
+                  "title": "Campo Completo — Clave de Sol",
+                  "description": "Todas as notas dentro da pauta: Mi até Fá (E4-F5).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [108]
+                }
+              ]
+            },
+            {
+              "module_id": "treble_p2",
+              "title": "Clave de Sol",
+              "subtitle": "Mão Direita · Expandindo o Mapa",
+              "hand": "right",
+              "chapters": [
+                {
+                  "chapter_id": 111,
+                  "title": "Descendo — Ré",
+                  "description": "Ré abaixo da 1ª linha (D4).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "D4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [109]
+                },
+                {
+                  "chapter_id": 112,
+                  "title": "Dó Central",
+                  "badge": "★ Dó Central",
+                  "description": "O Dó Central — 1ª linha suplementar abaixo da pauta (C4).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "D4", "C4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [111]
+                },
+                {
+                  "chapter_id": 113,
+                  "title": "Além do Dó — Si",
+                  "description": "Si abaixo da 1ª linha suplementar (B3).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "D4", "C4", "B3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [112]
+                },
+                {
+                  "chapter_id": 114,
+                  "title": "Região Grave — Lá",
+                  "description": "Lá na 2ª linha suplementar abaixo (A3).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "D4", "C4", "B3", "A3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [113]
+                },
+                {
+                  "chapter_id": 115,
+                  "title": "Acima da Pauta — Sol",
+                  "description": "Sol acima da 5ª linha (G5).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "D4", "C4", "B3", "A3", "G5"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [109]
+                },
+                {
+                  "chapter_id": 116,
+                  "title": "Acima da Pauta — Lá",
+                  "description": "Lá na 1ª linha suplementar acima (A5).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "D4", "C4", "B3", "A3", "G5", "A5"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [115]
+                },
+                {
+                  "chapter_id": 117,
+                  "title": "Extensão Aguda — Si",
+                  "description": "Si acima da 1ª linha suplementar (B5).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "D4", "C4", "B3", "A3", "G5", "A5", "B5"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [116]
+                },
+                {
+                  "chapter_id": 118,
+                  "title": "Limite Superior — Dó",
+                  "description": "Dó na 2ª linha suplementar acima (C6).",
+                  "allowed_notes": ["E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "D4", "C4", "B3", "A3", "G5", "A5", "B5", "C6"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [117]
+                },
+                {
+                  "chapter_id": 119,
+                  "title": "Mapa Completo — Clave de Sol",
+                  "description": "Todas as notas da Clave de Sol: de Lá grave (A3) até Dó agudo (C6).",
+                  "allowed_notes": ["A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5", "C6"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [118]
+                }
+              ]
+            },
+            {
+              "module_id": "bass_p1",
+              "title": "Clave de Fá",
+              "subtitle": "Mão Esquerda · Dentro da Pauta",
+              "hand": "left",
+              "chapters": [
+                {
+                  "chapter_id": 121,
+                  "title": "Âncoras Graves — Sol e Dó",
+                  "description": "Sol na 1ª linha e Dó no 2º espaço da Clave de Fá.",
+                  "allowed_notes": ["G2", "C3"],
+                  "skill_tags": ["Leitura"]
+                },
+                {
+                  "chapter_id": 122,
+                  "title": "Zona Central Grave — Si",
+                  "description": "Adicionando Si na 2ª linha (B2).",
+                  "allowed_notes": ["G2", "C3", "B2"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [121]
+                },
+                {
+                  "chapter_id": 123,
+                  "title": "Lá — Primeiro Espaço",
+                  "description": "Adicionando Lá no 1º espaço (A2).",
+                  "allowed_notes": ["G2", "C3", "B2", "A2"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [122]
+                },
+                {
+                  "chapter_id": 124,
+                  "title": "Ré — Terceira Linha",
+                  "description": "Adicionando Ré na 3ª linha (D3).",
+                  "allowed_notes": ["G2", "C3", "B2", "A2", "D3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [123]
+                },
+                {
+                  "chapter_id": 125,
+                  "title": "Mi — Terceiro Espaço",
+                  "description": "Adicionando Mi no 3º espaço (E3).",
+                  "allowed_notes": ["G2", "C3", "B2", "A2", "D3", "E3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [124]
+                },
+                {
+                  "chapter_id": 126,
+                  "title": "Fá — Quarta Linha",
+                  "description": "Adicionando Fá na 4ª linha (F3).",
+                  "allowed_notes": ["G2", "C3", "B2", "A2", "D3", "E3", "F3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [125]
+                },
+                {
+                  "chapter_id": 127,
+                  "title": "Sol — Quarto Espaço",
+                  "description": "Adicionando Sol no 4º espaço (G3).",
+                  "allowed_notes": ["G2", "C3", "B2", "A2", "D3", "E3", "F3", "G3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [126]
+                },
+                {
+                  "chapter_id": 128,
+                  "title": "Lá — Topo da Pauta",
+                  "description": "Adicionando Lá na 5ª linha (A3).",
+                  "allowed_notes": ["G2", "C3", "B2", "A2", "D3", "E3", "F3", "G3", "A3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [127]
+                },
+                {
+                  "chapter_id": 129,
+                  "title": "Campo Completo — Clave de Fá",
+                  "description": "Todas as notas dentro da pauta: Sol até Lá (G2-A3).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [128]
+                }
+              ]
+            },
+            {
+              "module_id": "bass_p2",
+              "title": "Clave de Fá",
+              "subtitle": "Mão Esquerda · Expandindo o Mapa",
+              "hand": "left",
+              "chapters": [
+                {
+                  "chapter_id": 131,
+                  "title": "Acima da Pauta — Si",
+                  "description": "Si no espaço acima da 5ª linha (B3).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [129]
+                },
+                {
+                  "chapter_id": 132,
+                  "title": "Dó Central",
+                  "badge": "★ Dó Central",
+                  "description": "O Dó Central — 1ª linha suplementar acima da pauta (C4).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [131]
+                },
+                {
+                  "chapter_id": 133,
+                  "title": "Zona de Encontro — Ré",
+                  "description": "Ré acima da 1ª linha suplementar (D4).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [132]
+                },
+                {
+                  "chapter_id": 134,
+                  "title": "Extensão Superior — Mi",
+                  "description": "Mi na 2ª linha suplementar acima (E4).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [133]
+                },
+                {
+                  "chapter_id": 135,
+                  "title": "Abaixo da Pauta — Fá",
+                  "description": "Fá no espaço abaixo da 1ª linha (F2).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4", "F2"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [129]
+                },
+                {
+                  "chapter_id": 136,
+                  "title": "Descendo — Mi Grave",
+                  "description": "Mi na 1ª linha suplementar abaixo (E2).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4", "F2", "E2"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [135]
+                },
+                {
+                  "chapter_id": 137,
+                  "title": "Descendo — Ré Grave",
+                  "description": "Ré abaixo da 1ª linha suplementar (D2).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4", "F2", "E2", "D2"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [136]
+                },
+                {
+                  "chapter_id": 138,
+                  "title": "Limite Inferior — Dó",
+                  "description": "Dó na 2ª linha suplementar abaixo (C2).",
+                  "allowed_notes": ["G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4", "F2", "E2", "D2", "C2"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [137]
+                },
+                {
+                  "chapter_id": 139,
+                  "title": "Mapa Completo — Clave de Fá",
+                  "description": "Todas as notas da Clave de Fá: de Dó grave (C2) até Mi agudo (E4).",
+                  "allowed_notes": ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4", "D4", "E4"],
+                  "skill_tags": ["Leitura"],
+                  "prerequisites": [138]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "level_id": "intermediate",
+          "title": "Nível 2 — Intermediário",
+          "feature_flag": "showIntermediateCurriculum",
+          "modules": [
+            {
+              "module_id": "hands_alt",
+              "title": "Mãos Alternadas",
+              "subtitle": "Coordenação Básica",
+              "hand": "alternate",
+              "chapters": [
+                {
+                  "chapter_id": 201,
+                  "title": "Encontro no Dó Central",
+                  "description": "As duas mãos se encontram no Dó Central.",
+                  "coming_soon": true,
+                  "allowed_notes": []
+                },
+                {
+                  "chapter_id": 202,
+                  "title": "Primeiros Intervalos",
+                  "description": "Lendo intervalos simples nas duas claves.",
+                  "coming_soon": true,
+                  "allowed_notes": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIDIano 2.0 | Experience</title>
+  <script src="https://unpkg.com/opensheetmusicdisplay@1.7.6/build/opensheetmusicdisplay.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="/index.tsx"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body class="dark-theme">
+  <div id="app">
+    <header class="viewer-navbar">
+      <button class="viewer-logo" data-route="home">MIDIano Studio</button>
+      <nav class="viewer-nav">
+        <button class="nav-btn" data-route="trainer">Trainer</button>
+        <button class="nav-btn" data-route="dashboard">Dashboard</button>
+      </nav>
+      <button id="user-menu-btn" class="user-avatar-btn" aria-label="Meu perfil" title="Configurações">
+        <span id="user-initials">?</span>
+      </button>
+    </header>
+
+    <main class="viewer-main">
+      <section id="home-page" class="page home active">
+        <div id="home-root" class="home-root dashboard-root">
+          <div class="dashboard-loading">Carregando resumo...</div>
+        </div>
+      </section>
+
+      <section id="trainer-page" class="page trainer">
+        <div class="trainer-stack">
+          <!-- Camada 1: HUD e Feedback (Order: 1) -->
+          <section class="hud-layer">
+            <div class="hud-glass">
+              <div class="hud-item main-stat" data-tooltip="Progresso: nota atual / total de notas">
+                <label>Progresso</label>
+                <div id="hud-step" class="value">--/--</div>
+              </div>
+              <div class="hud-item" data-tooltip="Status da nota atual: HIT/MISS/PENDING">
+                <label>Status</label>
+                <div id="hud-status" class="value status-pill">IDLE</div>
+              </div>
+              <div class="hud-item" data-tooltip="Pontuação total da sessão">
+                <label>Score</label>
+                <div id="hud-score" class="value" style="display: none;">0</div>
+              </div>
+              <div class="hud-item" data-tooltip="Sequência de acertos consecutivos">
+                <label>Streak</label>
+                <div id="hud-streak" class="value" style="display: none;">x0</div>
+              </div>
+              <div class="hud-item feedback-msg" data-tooltip="Feedback do julgamento da nota">
+                <div id="judge-feedback">AGUARDANDO</div>
+              </div>
+              <div class="hud-item" data-tooltip="Tempo decorrido">
+                <label>Tempo</label>
+                <div id="hud-timer" class="value">00:00.00</div>
+              </div>
+              <!-- Timing Debug (FILM mode only) -->
+              <div id="timing-debug-item" class="hud-item" style="display: none;"
+                data-tooltip="Timing offset: negativo = cedo, positivo = tarde">
+                <label>Timing</label>
+                <div id="timing-debug-value" class="value">--</div>
+              </div>
+              <div class="hud-debug-panel" aria-label="Debug input toggles">
+                <div class="hud-debug-header">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" class="hud-debug-icon">
+                    <path
+                      d="M21 10.42v3.16a1 1 0 0 1-.29.71l-2 2a1 1 0 0 1-1.41 0L15 14.17l-2 2V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-6c0-.27.11-.52.29-.71l6-6A1 1 0 0 1 12 6h2.83a3 3 0 1 0 5.64 0H22a1 1 0 0 1 1 1v3.42a1 1 0 0 1-2 0Z" />
+                  </svg>
+                  <div class="hud-debug-titles">
+                    <span class="hud-debug-kicker">Debug</span>
+                    <strong>Input Tools</strong>
+                  </div>
+                  <span id="debug-badge" class="debug-badge" hidden>DEBUG INPUT</span>
+                </div>
+                <label class="debug-toggle">
+                  <input id="debug-mouse-toggle" type="checkbox" />
+                  <span>Mouse Piano Input</span>
+                </label>
+                <label class="debug-toggle">
+                  <input id="debug-keyboard-toggle" type="checkbox" />
+                  <span>Keyboard Input (C4-C5)</span>
+                </label>
+                <div class="debug-meta">
+                  <span id="debug-source-label">Input: MIDI</span>
+                  <span class="debug-dot">|</span>
+                  <span id="debug-note-label">--</span>
+                </div>
+                <div class="feature-flag-group" aria-label="Feature flags">
+                  <span class="flag-group-label">Layout</span>
+                  <label class="debug-toggle">
+                    <input id="flag-sheet-toggle" type="checkbox" checked />
+                    <span>Partitura</span>
+                  </label>
+                  <label class="debug-toggle">
+                    <input id="flag-falling-toggle" type="checkbox" checked />
+                    <span>Falling Notes</span>
+                  </label>
+                </div>
+              </div>
+              <div class="hud-actions">
+                <button id="chapters-btn" class="chapter-toggle-btn" type="button" title="Abrir capítulos">
+                  Capítulos
+                </button>
+                <button id="audio-play-btn" class="icon-btn" title="Ativar/Desativar Áudio">
+                  <svg id="audio-off-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                      d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+                  </svg>
+                  <svg id="audio-on-icon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                    <path
+                      d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                  </svg>
+                </button>
+                <div class="mode-toggle">
+                  <label for="practice-mode-select">Modo</label>
+                  <select id="practice-mode-select">
+                    <option value="WAIT_INPUT">Wait</option>
+                    <option value="TIME_FILM">Time Film</option>
+                  </select>
+                </div>
+                <!-- Transport Controls -->
+                <button id="play-pause-btn" class="icon-btn" title="Play/Pause" style="display: none;">
+                  <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" />
+                    <path d="M10 8l6 4-6 4z" />
+                  </svg>
+                  <svg id="pause-icon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" />
+                    <rect x="9" y="8" width="2" height="8" />
+                    <rect x="13" y="8" width="2" height="8" />
+                  </svg>
+                </button>
+                <button id="reset-btn" class="icon-btn" title="Reiniciar lição">
+                  <svg viewBox="0 0 24 24">
+                    <path
+                      d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                  </svg>
+                </button>
+                <div class="mode-toggle" id="bpm-control" style="display: none;">
+                  <label for="bpm-input">BPM</label>
+                  <input id="bpm-input" type="number" min="40" max="220" step="1" value="120" class="bpm-input" />
+                </div>
+                <div class="mode-toggle" id="transpose-control" title="Transposição em Semitons" style="display: none;">
+                  <label for="transpose-input">Tom</label>
+                  <input id="transpose-input" type="number" min="-12" max="12" step="1" value="0" class="bpm-input"
+                    style="width: 48px;" />
+                </div>
+                <label class="metronome-toggle" id="metronome-control" title="Ativar metrônomo" style="display: none;">
+                  <input id="metronome-toggle" type="checkbox" checked />
+                  <span>Metrônomo</span>
+                </label>
+                <div class="midi-control">
+                  <button id="midi-btn" class="icon-btn" title="Gerenciar MIDI"
+                    data-tooltip="Selecionar porta e conectar o MIDI">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h4V7H4zm5 0v4h2V7H9zm3 0v4h2V7h-2zm3 0v10h4V7h-4zM4 18h4v-4H4v4zm5 0h2v-5H9v5zm3 0h2v-5h-2v5zm3 0h4v-4h-4v4z" />
+                    </svg>
+                  </button>
+                  <div id="midi-popover" class="midi-popover" hidden>
+                    <div class="midi-popover-header">
+                      <div id="midi-popover-status" class="midi-popover-status">MIDI: offline</div>
+                      <button id="midi-refresh-btn" class="midi-popover-refresh" type="button">Atualizar</button>
+                    </div>
+                    <label class="midi-popover-label" for="midi-port-select">Porta de entrada</label>
+                    <select id="midi-port-select" class="midi-popover-select">
+                      <option value="">Carregando...</option>
+                    </select>
+                    <p id="midi-error" class="midi-popover-error" hidden></p>
+                    <div class="midi-popover-actions">
+                      <button id="midi-connect-btn" class="chapter-primary-btn" type="button">Conectar</button>
+                      <button id="midi-disconnect-btn" class="chapter-secondary-btn" type="button">Desconectar</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="ws-indicator" class="ws-dot-indicator"
+                  data-tooltip="Status da conexão WebSocket com o backend"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Camada 2: Partitura Dinâmica (Order: 2) -->
+          <section class="sheet-section">
+            <div class="sheet-wrapper">
+              <div class="sheet-viewport">
+                <div class="sheet-inner">
+                  <div id="osmd-container"></div>
+                </div>
+                <div class="sheet-focus-line"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Camada 3: Piano Roll (Order: 3) -->
+          <section class="piano-roll-section">
+            <canvas id="piano-roll-canvas"></canvas>
+            <div id="piano-keyboard" class="keyboard"></div>
+          </section>
+
+          <footer class="mini-footer">
+            <div id="midi-status">MIDI: OFFLINE</div>
+          </footer>
+        </div>
+      </section>
+
+      <section id="dashboard-page" class="page dashboard">
+        <div id="dashboard-root" class="dashboard-root">
+          <div class="dashboard-loading">Carregando estatísticas...</div>
+        </div>
+      </section>
+
+      <section id="settings-page" class="page settings">
+        <div id="settings-root" class="settings-root"></div>
+      </section>
+    </main>
+    <div id="chapter-overlay" class="chapter-overlay" aria-hidden="true">
+      <div class="chapter-overlay-backdrop" data-overlay-close></div>
+      <div class="chapter-overlay-panel" role="dialog" aria-modal="true" aria-labelledby="chapter-overlay-title">
+        <header class="chapter-overlay-header">
+          <div class="chapter-overlay-title-group">
+            <span class="chapter-overlay-kicker">Catálogo</span>
+            <h2 id="chapter-overlay-title">Capítulos</h2>
+            <p id="chapter-overlay-meta" class="chapter-overlay-meta">Aguardando catálogo...</p>
+          </div>
+          <div class="chapter-overlay-controls">
+            <input id="chapter-search-input" class="chapter-search-input" type="search" placeholder="Buscar capítulo"
+              aria-label="Buscar capítulo" />
+            <button id="chapter-refresh-btn" class="chapter-secondary-btn" type="button">Tentar de novo</button>
+            <button id="chapter-close-btn" class="chapter-primary-btn" type="button">Fechar</button>
+          </div>
+        </header>
+        <div id="chapter-overlay-content" class="chapter-overlay-content">
+          <div class="chapter-overlay-state">Carregando capítulos...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

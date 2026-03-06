@@ -1,0 +1,5 @@
+{
+  "name": "Nexus AI Studio",
+  "description": "A comprehensive AI studio featuring real-time voice conversation, image generation, video creation, and search-grounded chat powered by the latest Gemini models.",
+  "requestFramePermissions": []
+}

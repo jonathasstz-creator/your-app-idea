@@ -1,0 +1,6 @@
+{
+  "midi_backend": "mido.backends.rtmidi",
+  "midi_in_name": "B2 KEYBOARD",
+  "midi_out_name": "B2 SOUND",
+  "browser": "chrome"
+}
