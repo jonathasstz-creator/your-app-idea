@@ -891,9 +891,10 @@ const init = async () => {
           }}
           onRepeat={() => {
             hideEndscreen();
-            // Reload current lesson
+            // Reload current lesson with a fresh session ID
             if (lastLessonContent) {
-              loadLessonContent(lastLessonContent);
+              const freshPayload = { ...lastLessonContent, session_id: generateSessionId() };
+              beginSession(freshPayload, { targetMode: practiceMode, reason: 'repeat' });
             }
           }}
           onNext={nextChapterId ? () => {

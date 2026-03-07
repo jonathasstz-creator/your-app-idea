@@ -141,8 +141,19 @@ export class CatalogService {
         const lessonId = this.chapterToLessonMap.get(normalized);
         if (lessonId) return lessonId;
 
-        // Trail chapters (100+) always map to lesson_{chapter_id} — no backend catalog entry needed.
-        if (normalized >= 100) return `lesson_${normalized}`;
+        // Special chapters that resolve to lesson_{id} without backend catalog:
+        //   4        — polyphonic intro
+        //   23       — chord practice
+        //   31-45    — polyphonic series
+        //   99       — sandbox/test
+        //   100+     — trail chapters (from lessons.json)
+        const isSpecialChapter =
+            normalized === 4 ||
+            normalized === 23 ||
+            (normalized >= 31 && normalized <= 45) ||
+            normalized === 99 ||
+            normalized >= 100;
+        if (isSpecialChapter) return `lesson_${normalized}`;
 
         return null;
     }
