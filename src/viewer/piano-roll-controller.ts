@@ -490,7 +490,14 @@ export class PianoRollController {
           this.ctx.shadowBlur = 15;
           this.ctx.shadowColor = COLORS.MISS;
         } else {
-          this.ctx.fillStyle = geo.isBlack ? '#34495e' : COLORS.PRIMARY_NEON;
+          // Hand-role coloring for polyphonic lessons
+          if (note.hand_role === 'left') {
+            this.ctx.fillStyle = geo.isBlack ? '#2a4a8f' : '#5B8DEF';
+          } else if (note.hand_role === 'right') {
+            this.ctx.fillStyle = geo.isBlack ? '#8a4a00' : '#F5A623';
+          } else {
+            this.ctx.fillStyle = geo.isBlack ? '#34495e' : COLORS.PRIMARY_NEON;
+          }
           this.ctx.shadowBlur = 0;
           if (relativePos < 0) this.ctx.fillStyle = 'rgba(0, 242, 255, 0.2)';
         }
