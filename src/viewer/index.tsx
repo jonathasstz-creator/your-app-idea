@@ -1689,7 +1689,13 @@ const init = async () => {
                 gotName: midiToName(midiInt)
             });
             res = engine.onMidiInput(midiInt, velInt, isOn);
+            // 🔒 One-call, no race: detect DONE synchronously before pushEvent/wsTransport
             viewAfter = engine.getViewState();
+            if (viewAfter.status === 'DONE') {
+                sessionController?.endLesson("COMPLETE"); // synchronous — isEnded = true immediately
+                renderView(viewAfter); // render DONE before Endscreen
+                return; // cancel pushEvent, wsTransport.send and subsequent logs
+            }
             // Force render update immediately (includes cursor update)
             renderView(viewAfter);
         } else if (practiceMode === "FILM" && lastFilmSnapshot) {
