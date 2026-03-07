@@ -131,6 +131,7 @@ class LessonEngineV1 implements LessonEngineApi {
   private attemptLog: AttemptLog[] = [];
   private stepStartTime = 0;
   private onEndedCallback: (() => void) | null = null;
+  private timer: { stop: () => void } | null = null;
 
   loadLesson(content: EngineLessonV1) {
     this.lesson = content;
@@ -167,9 +168,13 @@ class LessonEngineV1 implements LessonEngineApi {
   forceEnd() {
     if (this.isEnded) return;
     this.isEnded = true;
+    this.timer?.stop();
     this.pushAnalytics({ k: 'ended', timestamp: Date.now() });
-    // PR3: Notify endscreen when forceEnd is called (for FILM mode)
     this.notifyEnded();
+  }
+
+  setTimer(timer: { stop: () => void } | null) {
+    this.timer = timer;
   }
 
   onMidiInput(midi: number, velocity: number, isOn: boolean): { advanced: boolean; result: ResultStatus; score: number; streak: number } {
@@ -506,6 +511,7 @@ class LessonEngineV2 implements LessonEngineApi {
   private attemptLog: AttemptLog[] = [];
   private stepStartTime = 0;
   private onEndedCallback: (() => void) | null = null;
+  private timer: { stop: () => void } | null = null;
 
   loadLesson(content: EngineLessonV2) {
     this.lesson = content;
@@ -549,9 +555,13 @@ class LessonEngineV2 implements LessonEngineApi {
   forceEnd() {
     if (this.isEnded) return;
     this.isEnded = true;
+    this.timer?.stop();
     this.pushAnalytics({ k: 'ended', timestamp: Date.now() });
-    // PR3: Notify endscreen when forceEnd is called (for FILM mode)
     this.notifyEnded();
+  }
+
+  setTimer(timer: { stop: () => void } | null) {
+    this.timer = timer;
   }
 
   onMidiInput(midi: number, velocity: number, isOn: boolean): { advanced: boolean; result: ResultStatus; score: number; streak: number } {
