@@ -2346,7 +2346,18 @@ const init = async () => {
         }
     };
 
-    const setChapterOverlayOpen = (open: boolean) => {
+    /** Start a chapter with a specific lesson ID (e.g. from upload chapters with multiple lessons) */
+    const startChapterWithLesson = (chapterId: number, lessonId: string) => {
+        pendingStartChapterId = chapterId;
+        resetSessionState("chapter_change_pending");
+        sessionCtx = { ...sessionCtx, id: null, lessonId: null };
+        setChapterOverlayOpen(false);
+        // Go directly via REST with the specific lesson_id
+        startLessonViaRestWithLessonId(chapterId, lessonId).catch((error) => {
+            console.warn(`[REST LESSON] fallback for upload lesson chapter=${chapterId} lesson=${lessonId}`, error);
+        });
+    };
+
         chapterOverlayOpen = open;
         if (chapterOverlay) {
             chapterOverlay.classList.toggle("is-open", open);
