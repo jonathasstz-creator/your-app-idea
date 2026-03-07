@@ -40,6 +40,7 @@ import { computeTaskResult, dispatchTaskCompletion } from './services/taskComple
 import { LessonTransposer } from './services/lesson-transposer';
 import { LessonTimer, maybeStartLessonTimer } from './lesson-timer';
 import { LessonSessionController } from './lesson-session-controller';
+import { ensureAuthenticated, authService } from './auth/index';
 import { getAuthTokenFromStorage, clearAuthStorage } from './auth-storage';
 import { SettingsPage } from './settings';
 import { featureFlags } from './feature-flags/store';
