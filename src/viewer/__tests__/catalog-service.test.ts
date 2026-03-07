@@ -1,33 +1,9 @@
 /**
  * CatalogService — Unit Tests
  *
- * Tests caching, chapter-lesson mapping, normalizeChapterKey, and trail indexing.
+ * Tests caching, chapter-lesson mapping, and backend-driven trail building.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-
-// Mock the lessons.json import
-vi.mock("../../../assets/lessons.json", () => ({
-  default: {
-    trails: [
-      {
-        trail_id: "beginner",
-        levels: [
-          {
-            modules: [
-              {
-                chapters: [
-                  { chapter_id: 101, title: "Intro", lessons: ["lesson_101"] },
-                  { chapter_id: 102, title: "Basics", lessons: ["lesson_102"] },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-}));
-
 import { CatalogService, CatalogResponse } from "../catalog-service";
 
 const makeMockTransport = (response: CatalogResponse) => ({
@@ -46,23 +22,69 @@ describe("CatalogService", () => {
     service = new CatalogService();
   });
 
-  describe("getTrails()", () => {
-    it("returns trails from lessons.json", () => {
+  describe("getTrails() — backend-driven", () => {
+    it("returns empty before catalog is loaded", () => {
+      expect(service.getTrails()).toEqual([]);
+    });
+
+    it("returns trails derived from backend catalog after load", async () => {
+      const catalog: CatalogResponse = {
+        tracks: [
+          { track_id: "beginner", title: "Iniciante", order: 1 },
+        ],
+        chapters: [
+          { chapter_id: 31, track_id: "beginner", title: "Acordes I", order: 1 },
+          { chapter_id: 32, track_id: "beginner", title: "Acordes II", order: 2 },
+        ],
+        lessons: [
+          { lesson_id: "lesson_31", chapter_id: 31 },
+          { lesson_id: "lesson_32", chapter_id: 32 },
+        ],
+      };
+      await service.load(makeMockTransport(catalog) as any);
+
       const trails = service.getTrails();
       expect(trails).toHaveLength(1);
-      expect(trails[0].trail_id).toBe("beginner");
-    });
-  });
+      expect(trails[0].title).toBe("Iniciante");
 
-  describe("getTrailChapter()", () => {
-    it("returns indexed trail chapter by ID", () => {
-      const ch = service.getTrailChapter(101);
+      const chapters = trails[0].levels?.[0]?.modules?.[0]?.chapters;
+      expect(chapters).toHaveLength(2);
+      expect(chapters![0].chapter_id).toBe(31);
+      expect(chapters![1].chapter_id).toBe(32);
+    });
+
+    it("groups orphan chapters into 'Outros' trail", async () => {
+      const catalog: CatalogResponse = {
+        tracks: [],
+        chapters: [
+          { chapter_id: 99, title: "Sandbox" },
+        ],
+        lessons: [],
+      };
+      await service.load(makeMockTransport(catalog) as any);
+
+      const trails = service.getTrails();
+      expect(trails).toHaveLength(1);
+      expect(trails[0].trail_id).toBe("_other");
+    });
+
+    it("attaches multiple lessons to upload chapters", async () => {
+      const catalog: CatalogResponse = {
+        tracks: [{ track_id: "uploads", title: "Uploads", order: 1 }],
+        chapters: [
+          { chapter_id: 50, track_id: "uploads", title: "Minhas Músicas", order: 1 },
+        ],
+        lessons: [
+          { lesson_id: "upload_1", chapter_id: 50, title: "Música A" },
+          { lesson_id: "upload_2", chapter_id: 50, title: "Música B" },
+        ],
+      };
+      await service.load(makeMockTransport(catalog) as any);
+
+      const ch = service.getTrailChapter(50);
       expect(ch).toBeDefined();
-      expect(ch?.title).toBe("Intro");
-    });
-
-    it("returns undefined for non-existent chapter", () => {
-      expect(service.getTrailChapter(999)).toBeUndefined();
+      expect(ch?.lessons).toHaveLength(2);
+      expect(ch?.lessons![0].lesson_id).toBe("upload_1");
     });
   });
 
@@ -77,7 +99,6 @@ describe("CatalogService", () => {
       await service.load(transport as any);
       await service.load(transport as any);
 
-      // getCatalog should only be called once (cached)
       expect(transport.getCatalog).toHaveBeenCalledOnce();
     });
 
@@ -108,7 +129,7 @@ describe("CatalogService", () => {
 
     it("falls back to lessons array when chapter has no default", async () => {
       const catalog: CatalogResponse = {
-        chapters: [{ chapter_id: 3 }], // no default_lesson_id
+        chapters: [{ chapter_id: 3 }],
         lessons: [{ lesson_id: "les_3", chapter_id: 3 }],
       };
       await service.load(makeMockTransport(catalog) as any);
@@ -128,23 +149,22 @@ describe("CatalogService", () => {
     });
 
     it("special chapters auto-map to lesson_{id}", () => {
-      // No catalog loaded — special chapters should still resolve
-      expect(service.getChapterLessonId(4)).toBe("lesson_4");       // polyphonic intro
-      expect(service.getChapterLessonId(23)).toBe("lesson_23");     // chord practice
-      expect(service.getChapterLessonId(31)).toBe("lesson_31");     // polyphonic series start
-      expect(service.getChapterLessonId(45)).toBe("lesson_45");     // polyphonic series end
-      expect(service.getChapterLessonId(99)).toBe("lesson_99");     // sandbox
-      expect(service.getChapterLessonId(101)).toBe("lesson_101");   // trail chapter
-      expect(service.getChapterLessonId(150)).toBe("lesson_150");   // trail chapter
+      expect(service.getChapterLessonId(4)).toBe("lesson_4");
+      expect(service.getChapterLessonId(23)).toBe("lesson_23");
+      expect(service.getChapterLessonId(31)).toBe("lesson_31");
+      expect(service.getChapterLessonId(45)).toBe("lesson_45");
+      expect(service.getChapterLessonId(99)).toBe("lesson_99");
+      expect(service.getChapterLessonId(101)).toBe("lesson_101");
+      expect(service.getChapterLessonId(150)).toBe("lesson_150");
     });
 
     it("returns null for non-special chapters without catalog", () => {
       expect(service.getChapterLessonId(3)).toBeNull();
-      expect(service.getChapterLessonId(5)).toBeNull();   // between specials
-      expect(service.getChapterLessonId(22)).toBeNull();  // just below 23
-      expect(service.getChapterLessonId(24)).toBeNull();  // just above 23
-      expect(service.getChapterLessonId(46)).toBeNull();  // just above 45
-      expect(service.getChapterLessonId(98)).toBeNull();  // just below 99
+      expect(service.getChapterLessonId(5)).toBeNull();
+      expect(service.getChapterLessonId(22)).toBeNull();
+      expect(service.getChapterLessonId(24)).toBeNull();
+      expect(service.getChapterLessonId(46)).toBeNull();
+      expect(service.getChapterLessonId(98)).toBeNull();
     });
   });
 
@@ -158,6 +178,19 @@ describe("CatalogService", () => {
       await service.load(transport as any);
 
       expect(transport.getCatalog).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears trails on clear()", async () => {
+      const catalog: CatalogResponse = {
+        tracks: [{ track_id: "t1", title: "T1" }],
+        chapters: [{ chapter_id: 1, track_id: "t1", title: "Ch1" }],
+        lessons: [],
+      };
+      await service.load(makeMockTransport(catalog) as any);
+      expect(service.getTrails()).toHaveLength(1);
+
+      service.clear();
+      expect(service.getTrails()).toEqual([]);
     });
   });
 
