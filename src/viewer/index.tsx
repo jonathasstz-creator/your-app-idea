@@ -2358,6 +2358,7 @@ const init = async () => {
         });
     };
 
+    const setChapterOverlayOpen = (open: boolean) => {
         chapterOverlayOpen = open;
         if (chapterOverlay) {
             chapterOverlay.classList.toggle("is-open", open);
