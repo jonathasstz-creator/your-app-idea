@@ -127,14 +127,17 @@ describe("CatalogService", () => {
       expect(service.getChapterLessonId(7)).toBe("lesson_7");
     });
 
-    it("trail chapters (100+) auto-map to lesson_{id}", () => {
-      // No catalog loaded — trail chapters should still resolve
+    it("chapters >= 4 auto-map to lesson_{id} (polyphonic + trail)", () => {
+      // No catalog loaded — polyphonic and trail chapters should still resolve
+      expect(service.getChapterLessonId(4)).toBe("lesson_4");
+      expect(service.getChapterLessonId(23)).toBe("lesson_23");
+      expect(service.getChapterLessonId(99)).toBe("lesson_99");
       expect(service.getChapterLessonId(101)).toBe("lesson_101");
       expect(service.getChapterLessonId(150)).toBe("lesson_150");
     });
 
-    it("returns null for unknown non-trail chapter", () => {
-      expect(service.getChapterLessonId(99)).toBeNull();
+    it("returns null for unknown chapter < 4", () => {
+      expect(service.getChapterLessonId(3)).toBeNull();
     });
   });
 
