@@ -68,6 +68,7 @@ export interface LessonEngineApi {
   getAttemptLog(): AttemptLog[];
   getLessonMeta(): { lessonId: string | null; chapterId: number | null; totalSteps: number };
   setOnEnded(callback: (() => void) | null): void;
+  setTimer(timer: { stop(): void }): void;
 }
 
 export interface EngineLessonBase {
@@ -130,6 +131,12 @@ class LessonEngineV1 implements LessonEngineApi {
   private attemptLog: AttemptLog[] = [];
   private stepStartTime = 0;
   private onEndedCallback: (() => void) | null = null;
+  private timer: { stop(): void } | null = null;
+  private endedNotified = false;
+
+  setTimer(timer: { stop(): void }) {
+    this.timer = timer;
+  }
 
   loadLesson(content: EngineLessonV1) {
     this.lesson = content;
@@ -151,6 +158,7 @@ class LessonEngineV1 implements LessonEngineApi {
   reset() {
     this.currentStep = 0;
     this.isEnded = false;
+    this.endedNotified = false;
     this.score = 0;
     this.streak = 0;
     this.bestStreak = 0;
@@ -167,6 +175,12 @@ class LessonEngineV1 implements LessonEngineApi {
     if (this.isEnded) return;
     this.isEnded = true;
     this.pushAnalytics({ k: 'ended', timestamp: Date.now() });
+
+    // Stop the timer to ensure it doesn't continue after completion
+    if (this.timer) {
+      this.timer.stop();
+    }
+
     // PR3: Notify endscreen when forceEnd is called (for FILM mode)
     this.notifyEnded();
   }
@@ -181,7 +195,7 @@ class LessonEngineV1 implements LessonEngineApi {
 
     const midiInt = Math.round(midi);
     const expectedMidi = note.midi;
-    
+
     if (expectedMidi === midiInt) {
       this.logAttempt(midiInt, expectedMidi, true);
       this.onStepComplete('HIT');
@@ -228,10 +242,10 @@ class LessonEngineV1 implements LessonEngineApi {
       if (deltaMs > this.STEP_MISS_AFTER_MS && !this.activeStepHit) {
         const missed = this.activeStepIndex;
         const expectedMidi = this.notes[missed].midi;
-        
+
         // Log missed attempt (PR3)
         this.logAttempt(expectedMidi, expectedMidi, false);
-        
+
         this.applyFilmResult(missed, 'MISS');
         this.activeStepIndex = null;
         this.activeStepHit = false;
@@ -297,10 +311,10 @@ class LessonEngineV1 implements LessonEngineApi {
     }
 
     const finishedStepIndex = this.activeStepIndex;
-    
+
     // Log attempt for FILM mode HIT (PR3)
     this.logAttempt(midiInt, expectedMidi, true);
-    
+
     this.applyFilmResult(finishedStepIndex, 'HIT', accuracy);
     this.activeStepIndex = null;
     this.activeStepHit = false;
@@ -385,9 +399,9 @@ class LessonEngineV1 implements LessonEngineApi {
     console.log(`[EngineV1] onStepComplete: step=${this.currentStep}, total=${this.notes.length}, status=${status}`);
 
     if (this.currentStep >= this.notes.length) {
-      console.log('[EngineV1] Lesson completed! Calling forceEnd and notifyEnded');
+      console.log('[EngineV1] Lesson completed! Calling forceEnd');
+      // forceEnd() already calls notifyEnded() internally — do NOT call it again here
       this.forceEnd();
-      this.notifyEnded();
     }
   }
 
@@ -451,7 +465,7 @@ class LessonEngineV1 implements LessonEngineApi {
   private logAttempt(midi: number, expected: number, success: boolean) {
     const now = Date.now();
     const responseMs = this.stepStartTime > 0 ? now - this.stepStartTime : undefined;
-    
+
     this.attemptLog.push({
       stepIndex: this.currentStep,
       midi,
@@ -470,6 +484,8 @@ class LessonEngineV1 implements LessonEngineApi {
 
   private notifyEnded() {
     console.log(`[EngineV1] notifyEnded: hasCallback=${!!this.onEndedCallback}, isEnded=${this.isEnded}`);
+    if (this.endedNotified) return; // idempotente — previne double-fire
+    this.endedNotified = true;
     if (this.onEndedCallback && this.isEnded) {
       console.log('[EngineV1] Calling onEndedCallback via setTimeout');
       // Defer to allow state to settle
@@ -505,6 +521,12 @@ class LessonEngineV2 implements LessonEngineApi {
   private attemptLog: AttemptLog[] = [];
   private stepStartTime = 0;
   private onEndedCallback: (() => void) | null = null;
+  private timer: { stop(): void } | null = null;
+  private endedNotified = false;
+
+  setTimer(timer: { stop(): void }) {
+    this.timer = timer;
+  }
 
   loadLesson(content: EngineLessonV2) {
     this.lesson = content;
@@ -533,6 +555,7 @@ class LessonEngineV2 implements LessonEngineApi {
   reset() {
     this.currentStep = 0;
     this.isEnded = false;
+    this.endedNotified = false;
     this.score = 0;
     this.streak = 0;
     this.bestStreak = 0;
@@ -549,6 +572,12 @@ class LessonEngineV2 implements LessonEngineApi {
     if (this.isEnded) return;
     this.isEnded = true;
     this.pushAnalytics({ k: 'ended', timestamp: Date.now() });
+
+    // Stop the timer to ensure it doesn't continue after completion
+    if (this.timer) {
+      this.timer.stop();
+    }
+
     // PR3: Notify endscreen when forceEnd is called (for FILM mode)
     this.notifyEnded();
   }
@@ -643,12 +672,12 @@ class LessonEngineV2 implements LessonEngineApi {
           expectedMidis: Array.from(this.activeStep.expectedMidis),
           deltaMs
         });
-        
+
         // Log missed attempt (PR3)
         const hitMidis = Array.from(this.activeStep.hitMidis);
         const expectedMidis = Array.from(this.activeStep.expectedMidis);
         this.logFilmAttempt(missed, hitMidis, expectedMidis, false);
-        
+
         this.applyFilmResult(missed, 'MISS');
         this.activeStep = null;
         return { result: 'MISS' as const, step: missed, deltaMs };
@@ -743,12 +772,12 @@ class LessonEngineV2 implements LessonEngineApi {
       }
 
       const finishedStepIndex = this.activeStep.stepIndex;
-      
+
       // Log attempt for FILM mode (PR3)
       const hitMidis = Array.from(this.activeStep.hitMidis);
       const expectedMidis = Array.from(this.activeStep.expectedMidis);
       this.logFilmAttempt(finishedStepIndex, hitMidis, expectedMidis, true);
-      
+
       this.applyFilmResult(finishedStepIndex, 'HIT', accuracy);
       this.activeStep = null;
 
@@ -843,9 +872,9 @@ class LessonEngineV2 implements LessonEngineApi {
     console.log(`[EngineV2] onStepComplete: step=${this.currentStep}, total=${this.steps.length}, status=${status}`);
 
     if (this.currentStep >= this.steps.length) {
-      console.log('[EngineV2] Lesson completed! Calling forceEnd and notifyEnded');
+      console.log('[EngineV2] Lesson completed! Calling forceEnd');
+      // forceEnd() already calls notifyEnded() internally — do NOT call it again here
       this.forceEnd();
-      this.notifyEnded();
     }
   }
 
@@ -939,7 +968,7 @@ class LessonEngineV2 implements LessonEngineApi {
   private logAttempt(midi: number, expected: number, success: boolean) {
     const now = Date.now();
     const responseMs = this.stepStartTime > 0 ? now - this.stepStartTime : undefined;
-    
+
     this.attemptLog.push({
       stepIndex: this.currentStep,
       midi,
@@ -959,17 +988,17 @@ class LessonEngineV2 implements LessonEngineApi {
   // PR3: Log attempt for FILM mode (supports chords)
   private logFilmAttempt(stepIndex: number, hitMidis: number[], expectedMidis: number[], success: boolean) {
     const now = Date.now();
-    
+
     // Calculate response time from first hit
-    const responseMs = this.activeStep?.firstHitTime 
-      ? now - this.activeStep.firstHitTime 
+    const responseMs = this.activeStep?.firstHitTime
+      ? now - this.activeStep.firstHitTime
       : undefined;
-    
+
     this.attemptLog.push({
       stepIndex,
       midi: hitMidis.length === 1 ? hitMidis[0] : hitMidis,
-      noteName: hitMidis.length === 1 
-        ? midiToNoteName(hitMidis[0]) 
+      noteName: hitMidis.length === 1
+        ? midiToNoteName(hitMidis[0])
         : hitMidis.map(m => midiToNoteName(m)).join(', '),
       expected: expectedMidis.length === 1 ? expectedMidis[0] : expectedMidis,
       success,
@@ -980,6 +1009,8 @@ class LessonEngineV2 implements LessonEngineApi {
 
   private notifyEnded() {
     console.log(`[EngineV2] notifyEnded: hasCallback=${!!this.onEndedCallback}, isEnded=${this.isEnded}`);
+    if (this.endedNotified) return; // idempotente — previne double-fire
+    this.endedNotified = true;
     if (this.onEndedCallback && this.isEnded) {
       console.log('[EngineV2] Calling onEndedCallback via setTimeout');
       // Defer to allow state to settle

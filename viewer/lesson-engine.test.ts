@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createEngineV1, createEngineV2 } from './lesson-engine';
 import type { EngineLessonV1, EngineLessonV2 } from './lesson-engine';
 
@@ -65,5 +65,185 @@ describe('LessonEngine V2', () => {
     expect(complete.result).toBe('HIT');
     view = engine.getViewState();
     expect(view.currentStep).toBe(1);
+  });
+});
+
+describe('LessonEngine Timer Integration', () => {
+  it('stops the timer when forceEnd is called (V1)', () => {
+    const engine = createEngineV1();
+    const mockTimer = { stop: vi.fn() };
+
+    engine.setTimer(mockTimer);
+
+    // Timer should not be stopped initially
+    expect(mockTimer.stop).not.toHaveBeenCalled();
+
+    // Force end the lesson
+    engine.forceEnd();
+
+    // Timer must be stopped on forceEnd
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops the timer when lesson completes naturally via inputs (V1)', () => {
+    const engine = createEngineV1();
+    const content: EngineLessonV1 = {
+      ...base,
+      total_steps: 1,
+      notes: [{ step_index: 0, midi: 60, start_beat: 0, duration_beats: 1 }],
+    };
+
+    engine.loadLesson(content);
+    engine.setMode('WAIT');
+
+    const mockTimer = { stop: vi.fn() };
+    engine.setTimer(mockTimer);
+
+    // Complete the only note
+    engine.onMidiInput(60, 100, true);
+
+    // Timer must be stopped after finishing out the natural steps
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not stop the timer early before all steps are completed (V1)', () => {
+    const engine = createEngineV1();
+    const content: EngineLessonV1 = {
+      ...base,
+      total_steps: 2,
+      notes: [
+        { step_index: 0, midi: 60, start_beat: 0, duration_beats: 1 },
+        { step_index: 1, midi: 62, start_beat: 1, duration_beats: 1 }
+      ],
+    };
+
+    engine.loadLesson(content);
+    engine.setMode('WAIT');
+
+    const mockTimer = { stop: vi.fn() };
+    engine.setTimer(mockTimer);
+
+    // Complete first note
+    engine.onMidiInput(60, 100, true);
+
+    // Timer must NOT be stopped yet
+    expect(mockTimer.stop).not.toHaveBeenCalled();
+
+    // Complete second note
+    engine.onMidiInput(62, 100, true);
+
+    // Timer must be stopped now
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops the timer exactly once if completed naturally and then forceEnd is called (V1)', () => {
+    const engine = createEngineV1();
+    const content: EngineLessonV1 = {
+      ...base,
+      total_steps: 1,
+      notes: [{ step_index: 0, midi: 60, start_beat: 0, duration_beats: 1 }],
+    };
+
+    engine.loadLesson(content);
+    engine.setMode('WAIT');
+
+    const mockTimer = { stop: vi.fn() };
+    engine.setTimer(mockTimer);
+
+    // Complete the only note -> triggers natural stop
+    engine.onMidiInput(60, 100, true);
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+
+    // Simulation of end-screen or another system component triggering forceEnd
+    engine.forceEnd();
+
+    // Timer should still only be stopped 1 time
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('LessonEngine V2 Timer Integration', () => {
+  it('stops the timer when forceEnd is called (V2)', () => {
+    const engine = createEngineV2();
+    const mockTimer = { stop: vi.fn() };
+
+    engine.setTimer(mockTimer);
+
+    expect(mockTimer.stop).not.toHaveBeenCalled();
+    engine.forceEnd();
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops the timer when lesson completes naturally via inputs (V2)', () => {
+    const engine = createEngineV2();
+    const content: EngineLessonV2 = {
+      ...base,
+      total_steps: 1,
+      steps: [{ step_index: 0, start_beat: 0, duration_beats: 1, notes: [60] }],
+    };
+
+    engine.loadLesson(content);
+    engine.setMode('WAIT');
+
+    const mockTimer = { stop: vi.fn() };
+    engine.setTimer(mockTimer);
+
+    engine.onMidiInput(60, 100, true);
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not stop the timer early before all steps are completed (V2)', () => {
+    const engine = createEngineV2();
+    const content: EngineLessonV2 = {
+      ...base,
+      total_steps: 2,
+      steps: [
+        { step_index: 0, start_beat: 0, duration_beats: 1, notes: [60] },
+        { step_index: 1, start_beat: 1, duration_beats: 1, notes: [62] }
+      ],
+    };
+
+    engine.loadLesson(content);
+    engine.setMode('WAIT');
+
+    const mockTimer = { stop: vi.fn() };
+    engine.setTimer(mockTimer);
+
+    // Complete first note
+    engine.onMidiInput(60, 100, true);
+
+    // Timer must NOT be stopped yet
+    expect(mockTimer.stop).not.toHaveBeenCalled();
+
+    // Complete second note
+    engine.onMidiInput(62, 100, true);
+
+    // Timer must be stopped now
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops the timer exactly once if completed naturally and then forceEnd is called (V2)', () => {
+    const engine = createEngineV2();
+    const content: EngineLessonV2 = {
+      ...base,
+      total_steps: 1,
+      steps: [{ step_index: 0, start_beat: 0, duration_beats: 1, notes: [60] }],
+    };
+
+    engine.loadLesson(content);
+    engine.setMode('WAIT');
+
+    const mockTimer = { stop: vi.fn() };
+    engine.setTimer(mockTimer);
+
+    // Complete the only note -> triggers natural stop
+    engine.onMidiInput(60, 100, true);
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
+
+    // Simulation of end-screen triggering forceEnd redundantly
+    engine.forceEnd();
+
+    // Still only stopped 1 time
+    expect(mockTimer.stop).toHaveBeenCalledTimes(1);
   });
 });

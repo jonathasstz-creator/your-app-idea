@@ -18,6 +18,7 @@ export interface LessonNoteV1 {
   staff?: string;
   score_note_index?: number;
   status?: string; // For visual state
+  hand_role?: string | null; // "left" | "right" | null (polyphonic V2 only)
 }
 
 // V2: Polyphonic steps (notes[] = chord)
@@ -28,6 +29,7 @@ export interface LessonStepV2 {
   notes: number[];
   staff?: number;
   voice?: number;
+  hand_roles?: string[]; // e.g. ["left","right"] or ["right","right"]
 }
 
 export interface LessonEvaluationConfig {
