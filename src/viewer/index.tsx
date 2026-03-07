@@ -2790,10 +2790,19 @@ const startApp = async () => {
     try {
         await ensureAuthenticated();
         console.log('[AUTH] ✅ autenticado, iniciando app');
-        await init();
     } catch (err) {
         console.error('[AUTH] ❌ Falha ao autenticar', err);
-        alert('Não foi possível autenticar. Verifique VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY e tente novamente.');
+        const message = err instanceof Error ? err.message : String(err);
+        alert(`Não foi possível autenticar. ${message}`);
+        return;
+    }
+
+    try {
+        await init();
+    } catch (err) {
+        console.error('[INIT] ❌ Falha ao inicializar app', err);
+        const message = err instanceof Error ? err.message : String(err);
+        alert(`Falha ao inicializar aplicação: ${message}`);
     }
 };
 

@@ -1,4 +1,8 @@
 {
-  "_comment": "Runtime config — override build-time VITE_* vars without rebuild. Values here take precedence over import.meta.env but are overridden by window.__APP_CONFIG__.",
-  "_docs": "Keys match AppConfig interface in src/config/app-config.ts"
+  "supabaseUrl": "https://mkhmrcszcjfnmlcfaaln.supabase.co",
+  "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1raG1yY3N6Y2pmbm1sY2ZhYWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MzI3MDEsImV4cCI6MjA4ODQwODcwMX0.N0wQ7MSV2BPqLXUwOkRUieWvdyub34EYxx0J037ee_Q",
+  "apiBaseUrl": "https://api.devoltecomele.com",
+  "analyticsApiUrl": "https://api.devoltecomele.com",
+  "analyticsMode": "api",
+  "enableStaticFallback": false
 }
