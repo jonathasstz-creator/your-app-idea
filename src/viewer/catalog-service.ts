@@ -9,8 +9,7 @@
 
 import type { ITransport } from './transport/factory';
 import type { Trail, TrailChapter } from './catalog/types';
-// @ts-ignore - JSON import from assets
-const lessonsJson: any = {};
+import lessonsJson from '../../assets/lessons.json';
 
 export interface CatalogResponse {
     api_version?: string;
@@ -57,7 +56,11 @@ export class CatalogService {
     /** Returns all trails defined in lessons.json */
     getTrails(): Trail[] {
         const json = lessonsJson as unknown as { trails?: Trail[] };
-        return json.trails ?? [];
+        const trails = json.trails ?? [];
+        if (!trails.length) {
+            console.warn('[CatalogService] ⚠️ getTrails() returned empty — lessons.json has no trails[] or import failed');
+        }
+        return trails;
     }
 
     /** Returns trail chapter metadata by ID (chapters 101+) */
