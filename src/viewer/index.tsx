@@ -2348,6 +2348,7 @@ const init = async () => {
         }
     }
 
+    const startChapter = (chapterId: number) => {
         pendingStartChapterId = chapterId;
         resetSessionState("chapter_change_pending");
         sessionCtx = { ...sessionCtx, id: null, lessonId: null };
