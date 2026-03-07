@@ -9,9 +9,9 @@ export default defineConfig({
   },
   plugins: [
     react({
-      // Exclude viewer files from React Fast Refresh to avoid RefreshRuntime conflicts.
+      // Only apply React Fast Refresh to files outside src/viewer/.
       // The viewer manages its own React lifecycle imperatively.
-      exclude: /src\/viewer\/.*/,
+      include: /src\/(?!viewer\/).*\.(jsx|tsx)$/,
     }),
   ],
   resolve: {
