@@ -34,7 +34,7 @@ export class RestTransport implements ITransport {
 
     async getCatalog(): Promise<CatalogResponse> {
         console.log('[REST] Fetching catalog');
-        const response = await this.fetchWithAuth('/catalog');
+        const response = await this.fetchWithAuth('/v1/catalog');
         return response;
     }
 
@@ -91,7 +91,7 @@ export class RestTransport implements ITransport {
             },
         };
 
-        const session = await this.fetchWithAuth('/sessions', {
+        const session = await this.fetchWithAuth('/v1/sessions', {
             method: 'POST',
             body: JSON.stringify(sessionPayload),
         });
@@ -102,13 +102,13 @@ export class RestTransport implements ITransport {
 
     async getLesson(sessionId: string): Promise<LessonContent> {
         console.log('[REST] Fetching lesson for session:', sessionId);
-        const lesson = await this.fetchWithAuth(`/sessions/${sessionId}/lesson`);
+        const lesson = await this.fetchWithAuth(`/v1/sessions/${sessionId}/lesson`);
         return lesson;
     }
 
     async sendEvent(sessionId: string, event: any): Promise<void> {
         console.log('[REST] Sending event for session:', sessionId, 'type:', event.type);
-        await this.fetchWithAuth(`/sessions/${sessionId}/events`, {
+        await this.fetchWithAuth(`/v1/sessions/${sessionId}/events`, {
             method: 'POST',
             body: JSON.stringify({ events: [event] }),
         });
