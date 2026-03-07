@@ -1625,6 +1625,9 @@ const init = async () => {
     const handleNoteInput = (midi: number, velocity: number, source: DebugInputSource) => {
         if (!Number.isFinite(midi)) return;
 
+        // 🔒 Guard: lesson is over — do not process or log any input
+        if (sessionController?.isEnded() || engine.getViewState().status === 'DONE') return;
+
         // Only accept debug inputs in trainer
         if (!isTrainerActive() && velocity > 0) return;
 
