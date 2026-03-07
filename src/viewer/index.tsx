@@ -38,7 +38,8 @@ import { CatalogService } from './catalog-service';
 import { EndscreenContainer, useTaskResult } from './components/Endscreen';
 import { computeTaskResult, dispatchTaskCompletion } from './services/taskCompletion';
 import { LessonTransposer } from './services/lesson-transposer';
-import { LessonTimer } from './lesson-timer';
+import { LessonTimer, maybeStartLessonTimer } from './lesson-timer';
+import { LessonSessionController } from './lesson-session-controller';
 import { ensureAuthenticated, authService } from './auth/index';
 import { getAuthTokenFromStorage, clearAuthStorage } from './auth-storage';
 import { SettingsPage } from './settings';
@@ -65,8 +66,9 @@ let eventSeq = 0;
 let t0Perf = 0;
 let filmHudFlash: { status: "HIT" | "MISS" | "LATE"; untilMs: number } | null = null;
 let featureFlagSnapshot: FeatureFlags = featureFlags.snapshot();
-// Declare lessonTimer at module scope so it can be used by pushEvent
+// Declare lessonTimer and sessionController at module scope so pushEvent can access them
 let lessonTimer: LessonTimer;
+let sessionController: LessonSessionController | null = null;
 
 const resetEventStream = (sessionId: string | null, lessonId: string | null, mode: LessonMode, totalSteps: number | null) => {
     eventStream = [];
@@ -81,10 +83,8 @@ const pushEvent = (type: EventV1["type"], payload: Omit<EventV1, "type" | "seq" 
     eventSeq += 1;
     const t_ms = Math.round(performance.now() - t0Perf);
 
-    // Start timer on first note activity
-    if ((type === 'note_on' || type === 'note_result') && typeof lessonTimer !== 'undefined' && !lessonTimer.isRunning()) {
-        lessonTimer.start();
-    }
+    // Start timer on first note activity (guarded: never after lesson ends)
+    maybeStartLessonTimer(type, typeof lessonTimer !== 'undefined' ? lessonTimer : undefined, sessionController?.isEnded() ?? false);
 
     eventStream.push({ ...(payload as any), type, seq: eventSeq, t_ms });
 };
@@ -907,35 +907,40 @@ const init = async () => {
 
     // Configure engine end callback (PR2/PR3)
     const setupEngineEndCallback = () => {
-      engine.setOnEnded(() => {
-        console.log('[Endscreen] Lesson ended, computing result...');
-        const attempts = engine.getAttemptLog();
-        const meta = engine.getLessonMeta();
-        
-        if (attempts.length === 0) {
-          console.log('[Endscreen] No attempts logged, skipping endscreen');
-          return;
-        }
+        engine.setOnEnded(() => {
+            // 🔒 Atomic shutdown — stop timer + frameLoop immediately (idempotent)
+            sessionController?.endLesson("COMPLETE");
+            console.log('[Endscreen] Lesson ended, computing result...');
+            // 🔒 Stop transport loop + metronome immediately (kills [ENGINE_FRAME] in WAIT mode)
+            transportClient.stop();
+            transportMetronome.stop();
+            const attempts = engine.getAttemptLog();
+            const meta = engine.getLessonMeta();
 
-        // PR3: Use V2 for FILM mode, V1 for WAIT mode
-        const isFilm = practiceMode === 'FILM';
-        const version = isFilm ? 'V2' : 'V1';
-        
-        console.log(`[Endscreen] Mode: ${practiceMode}, Using version: ${version}`);
+            if (attempts.length === 0) {
+                console.log('[Endscreen] No attempts logged, skipping endscreen');
+                return;
+            }
 
-        const result = computeTaskResult(
-          attempts,
-          meta.totalSteps,
-          isFilm ? 'FILM' : 'WAIT',
-          meta.lessonId ?? undefined,
-          meta.chapterId ?? undefined,
-          version // PR3: V2 for FILM, V1 for WAIT
-        );
+            // Use schema version (not practice mode) to identify V1/V2 engine correctly
+            // V2 engine is used for polyphonic chapters in WAIT mode too
+            const version = currentSchemaVersion === 2 ? 'V2' : 'V1';
 
-        console.log('[Endscreen] Dispatching result:', result);
-        dispatchTaskCompletion(result);
-        showEndscreen(result);
-      });
+            console.log(`[Endscreen] Mode: ${practiceMode}, Using version: ${version}`);
+
+            const result = computeTaskResult(
+                attempts,
+                meta.totalSteps,
+                practiceMode === 'FILM' ? 'FILM' : 'WAIT',
+                meta.lessonId ?? undefined,
+                meta.chapterId ?? undefined,
+                version // PR3: V2 for FILM, V1 for WAIT
+            );
+
+            console.log('[Endscreen] Dispatching result:', result);
+            dispatchTaskCompletion(result);
+            showEndscreen(result);
+        });
     };
 
     // PR3: Find next lesson in catalog
@@ -1401,6 +1406,8 @@ const init = async () => {
                 currentSchemaVersion = 1;
                 lessonSteps = [];
                 engine = createEngineV1();
+                engine.setTimer(lessonTimer); // 🔒 wire timer so forceEnd() stops the HUD interval
+                sessionController = new LessonSessionController({ timer: lessonTimer, frameLoop: transportClient, engine });
                 setupEngineEndCallback(); // PR2: Setup endscreen callback
 
                 const basePayload: LessonContentPacket = {
@@ -1515,6 +1522,8 @@ const init = async () => {
                     .map(({ step }) => step);
                 lessonSteps = orderedSteps;
                 engine = createEngineV2();
+                engine.setTimer(lessonTimer); // 🔒 wire timer so forceEnd() stops the HUD interval
+                sessionController = new LessonSessionController({ timer: lessonTimer, frameLoop: transportClient, engine });
                 setupEngineEndCallback(); // PR2: Setup endscreen callback
 
                 const { renderNotes, startIndexByStep } = deriveRenderNotesFromV2Steps(orderedSteps);
@@ -1617,6 +1626,9 @@ const init = async () => {
     const handleNoteInput = (midi: number, velocity: number, source: DebugInputSource) => {
         if (!Number.isFinite(midi)) return;
 
+        // 🔒 Guard: lesson is over — do not process or log any input
+        if (sessionController?.isEnded() || engine.getViewState().status === 'DONE') return;
+
         // Only accept debug inputs in trainer
         if (!isTrainerActive() && velocity > 0) return;
 
@@ -1678,7 +1690,13 @@ const init = async () => {
                 gotName: midiToName(midiInt)
             });
             res = engine.onMidiInput(midiInt, velInt, isOn);
+            // 🔒 One-call, no race: detect DONE synchronously before pushEvent/wsTransport
             viewAfter = engine.getViewState();
+            if (viewAfter.status === 'DONE') {
+                sessionController?.endLesson("COMPLETE"); // synchronous — isEnded = true immediately
+                renderView(viewAfter); // render DONE before Endscreen
+                return; // cancel pushEvent, wsTransport.send and subsequent logs
+            }
             // Force render update immediately (includes cursor update)
             renderView(viewAfter);
         } else if (practiceMode === "FILM" && lastFilmSnapshot) {
