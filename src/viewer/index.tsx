@@ -850,9 +850,15 @@ const init = async () => {
         trailNavReactRoot.render(
             <TrailNavigator
                 trails={catalogService.getTrails()}
-                onSelectChapter={(chapterId) => {
+                onSelectChapter={(chapterId, lessonId) => {
                     close();
-                    startChapter(chapterId);
+                    // If a specific lessonId was selected (e.g. from upload chapter),
+                    // override the default lesson mapping for this session
+                    if (lessonId) {
+                        startChapterWithLesson(chapterId, lessonId);
+                    } else {
+                        startChapter(chapterId);
+                    }
                     setRoute('trainer');
                 }}
                 onClose={close}
