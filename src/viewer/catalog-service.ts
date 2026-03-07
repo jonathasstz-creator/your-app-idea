@@ -4,25 +4,34 @@
  * Centralized catalog management with caching to prevent duplicate HTTP requests.
  * Handles both REST and WebSocket transport modes.
  *
- * Also indexes static trails[] from lessons.json for the TrailNavigator UI.
+ * IMPORTANT: The navigation (TrailNavigator) is powered by the BACKEND catalog.
+ * `assets/lessons.json` is NO LONGER used as the primary source for navigation.
+ * The adapter in `catalog/adapter.ts` converts the flat backend response into
+ * the hierarchical Trail[] structure expected by the UI.
  */
 
 import type { ITransport } from './transport/factory';
 import type { Trail, TrailChapter } from './catalog/types';
-import lessonsJson from '../../assets/lessons.json';
+import { adaptCatalogToTrails } from './catalog/adapter';
 
 export interface CatalogResponse {
     api_version?: string;
     tracks?: any[];
     chapters?: Array<{
         chapter_id: number | string;
+        track_id?: string | number | null;
         default_lesson_id?: string;
         title?: string;
         subtitle?: string;
+        order?: number;
+        status?: string;
+        lessons?: Array<{ lesson_id: string; title?: string; order?: number }>;
     }>;
     lessons?: Array<{
         lesson_id: string;
         chapter_id?: number | string;
+        title?: string;
+        order?: number;
     }>;
 }
 
@@ -32,46 +41,32 @@ export class CatalogService {
     private loadPromise: Promise<CatalogResponse> | null = null;
     private chapterToLessonMap = new Map<number, string>();
 
-    // Trail data indexed from static lessons.json (no backend needed)
+    // Trail data derived from backend catalog (NOT from static lessons.json)
+    private backendTrails: Trail[] = [];
     private trailChapterById = new Map<number, TrailChapter>();
 
-    constructor() {
-        this.indexStaticTrails();
-    }
-
-    /** Index trail chapters from static lessons.json for TrailNavigator */
-    private indexStaticTrails(): void {
-        const json = lessonsJson as unknown as { trails?: Trail[] };
-        for (const trail of json.trails ?? []) {
-            for (const level of trail.levels ?? []) {
-                for (const mod of level.modules ?? []) {
-                    for (const ch of mod.chapters ?? []) {
-                        this.trailChapterById.set(ch.chapter_id, ch as TrailChapter);
-                    }
-                }
-            }
-        }
-    }
-
-    /** Returns all trails defined in lessons.json */
+    /**
+     * Returns all trails derived from the backend catalog.
+     * Falls back to empty array if catalog hasn't been loaded yet.
+     *
+     * NOTE: This NO LONGER reads from assets/lessons.json.
+     * The backend is the single source of truth for navigation.
+     */
     getTrails(): Trail[] {
-        const json = lessonsJson as unknown as { trails?: Trail[] };
-        const trails = json.trails ?? [];
-        if (!trails.length) {
-            console.warn('[CatalogService] ⚠️ getTrails() returned empty — lessons.json has no trails[] or import failed');
+        if (this.backendTrails.length === 0 && !this.catalog) {
+            console.warn('[CatalogService] ⚠️ getTrails() called before catalog loaded — returning empty');
         }
-        return trails;
+        return this.backendTrails;
     }
 
-    /** Returns trail chapter metadata by ID (chapters 101+) */
+    /** Returns trail chapter metadata by ID (from backend catalog) */
     getTrailChapter(chapterId: number): TrailChapter | undefined {
         return this.trailChapterById.get(chapterId);
     }
 
     /**
      * Load catalog from transport (with caching)
-     * @param transport - The transport instance to use
-     * @returns Promise resolving to catalog data
+     * After loading, automatically builds the Trail[] hierarchy from backend data.
      */
     async load(transport: ITransport): Promise<CatalogResponse> {
         // Return cached catalog if available
@@ -94,10 +89,13 @@ export class CatalogService {
             .then(catalog => {
                 this.catalog = catalog;
                 this.buildChapterLessonMap(catalog);
+                this.buildTrailsFromBackend(catalog);
                 console.log('[CatalogService] ✅ Catalog loaded successfully', {
+                    tracks: catalog.tracks?.length ?? 0,
                     chapters: catalog.chapters?.length ?? 0,
                     lessons: catalog.lessons?.length ?? 0,
-                    mappings: this.chapterToLessonMap.size
+                    mappings: this.chapterToLessonMap.size,
+                    trails: this.backendTrails.length,
                 });
                 return catalog;
             })
@@ -135,8 +133,6 @@ export class CatalogService {
 
     /**
      * Get lesson ID for a given chapter ID
-     * @param chapterId - The chapter ID (number or string)
-     * @returns The lesson ID or null if not found
      */
     getChapterLessonId(chapterId: number | string): string | null {
         const normalized = this.normalizeChapterKey(chapterId);
@@ -168,9 +164,36 @@ export class CatalogService {
     clear(): void {
         this.catalog = null;
         this.chapterToLessonMap.clear();
+        this.backendTrails = [];
+        this.trailChapterById.clear();
         this.loading = false;
         this.loadPromise = null;
         console.log('[CatalogService] Cache cleared');
+    }
+
+    /**
+     * Build Trail[] hierarchy from backend catalog data.
+     * This is the ONLY source of truth for TrailNavigator.
+     */
+    private buildTrailsFromBackend(catalog: CatalogResponse): void {
+        this.backendTrails = adaptCatalogToTrails(catalog);
+        this.trailChapterById.clear();
+
+        // Index all trail chapters for quick lookup
+        for (const trail of this.backendTrails) {
+            for (const level of trail.levels ?? []) {
+                for (const mod of level.modules ?? []) {
+                    for (const ch of mod.chapters ?? []) {
+                        this.trailChapterById.set(ch.chapter_id, ch);
+                    }
+                }
+            }
+        }
+
+        console.log('[CatalogService] Built trails from backend:', {
+            trails: this.backendTrails.length,
+            indexedChapters: this.trailChapterById.size,
+        });
     }
 
     /**
