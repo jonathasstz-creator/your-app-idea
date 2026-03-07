@@ -7,7 +7,13 @@ export default defineConfig({
     host: "::",
     port: 8080,
   },
-  plugins: [react()],
+  plugins: [
+    react({
+      // Only apply React Fast Refresh to files outside src/viewer/.
+      // The viewer manages its own React lifecycle imperatively.
+      include: /src\/(?!viewer\/).*\.(jsx|tsx)$/,
+    }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
