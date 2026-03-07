@@ -127,17 +127,24 @@ describe("CatalogService", () => {
       expect(service.getChapterLessonId(7)).toBe("lesson_7");
     });
 
-    it("chapters >= 4 auto-map to lesson_{id} (polyphonic + trail)", () => {
-      // No catalog loaded — polyphonic and trail chapters should still resolve
-      expect(service.getChapterLessonId(4)).toBe("lesson_4");
-      expect(service.getChapterLessonId(23)).toBe("lesson_23");
-      expect(service.getChapterLessonId(99)).toBe("lesson_99");
-      expect(service.getChapterLessonId(101)).toBe("lesson_101");
-      expect(service.getChapterLessonId(150)).toBe("lesson_150");
+    it("special chapters auto-map to lesson_{id}", () => {
+      // No catalog loaded — special chapters should still resolve
+      expect(service.getChapterLessonId(4)).toBe("lesson_4");       // polyphonic intro
+      expect(service.getChapterLessonId(23)).toBe("lesson_23");     // chord practice
+      expect(service.getChapterLessonId(31)).toBe("lesson_31");     // polyphonic series start
+      expect(service.getChapterLessonId(45)).toBe("lesson_45");     // polyphonic series end
+      expect(service.getChapterLessonId(99)).toBe("lesson_99");     // sandbox
+      expect(service.getChapterLessonId(101)).toBe("lesson_101");   // trail chapter
+      expect(service.getChapterLessonId(150)).toBe("lesson_150");   // trail chapter
     });
 
-    it("returns null for unknown chapter < 4", () => {
+    it("returns null for non-special chapters without catalog", () => {
       expect(service.getChapterLessonId(3)).toBeNull();
+      expect(service.getChapterLessonId(5)).toBeNull();   // between specials
+      expect(service.getChapterLessonId(22)).toBeNull();  // just below 23
+      expect(service.getChapterLessonId(24)).toBeNull();  // just above 23
+      expect(service.getChapterLessonId(46)).toBeNull();  // just above 45
+      expect(service.getChapterLessonId(98)).toBeNull();  // just below 99
     });
   });
 
