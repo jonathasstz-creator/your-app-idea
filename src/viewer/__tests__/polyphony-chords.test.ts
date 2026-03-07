@@ -89,6 +89,42 @@ describe("Polyphony V2 — Chord Expansion", () => {
     // At least one successful attempt logged
     expect(log.some((a) => a.success)).toBe(true);
   });
+
+  it("chord expansion: each note in chord creates an attempt entry", () => {
+    engine.loadLesson(makeV2Lesson([{ notes: [60, 64, 67], start_beat: 0 }]));
+
+    engine.onMidiInput(60, 100, true);
+    engine.onMidiInput(64, 100, true);
+    engine.onMidiInput(67, 100, true);
+
+    const log = engine.getAttemptLog();
+    // Each correct note should be logged
+    expect(log.filter((a) => a.success).length).toBeGreaterThanOrEqual(3);
+    // All logged midis should be from the chord
+    const midis = log.filter((a) => a.success).map((a) => a.midi);
+    expect(midis).toContain(60);
+    expect(midis).toContain(64);
+    expect(midis).toContain(67);
+  });
+
+  it("multi-step chord sequence tracks score correctly", () => {
+    engine.loadLesson(makeV2Lesson([
+      { notes: [60, 64], start_beat: 0 },
+      { notes: [67, 71], start_beat: 1 },
+    ]));
+
+    // Complete first chord
+    engine.onMidiInput(60, 100, true);
+    engine.onMidiInput(64, 100, true);
+    expect(engine.getViewState().score).toBe(1);
+    expect(engine.getViewState().currentStep).toBe(1);
+
+    // Complete second chord
+    engine.onMidiInput(67, 100, true);
+    engine.onMidiInput(71, 100, true);
+    expect(engine.getViewState().score).toBe(2);
+    expect(engine.getViewState().status).toBe("DONE");
+  });
 });
 
 describe("Polyphony V2 — Miss Window & duration_beats", () => {
