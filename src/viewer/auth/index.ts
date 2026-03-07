@@ -3,17 +3,39 @@ import { createRoot } from 'react-dom/client';
 import { supabase } from './supabaseClient';
 import AuthShell from './AuthShell';
 import { syncSessionToLegacyStorage } from '../auth-storage';
+import { isAuthConfigured, getConfig, isDev } from '../../config/app-config';
 
 /**
  * Ensures the user is authenticated. If not, shows a full-screen auth overlay.
  */
 export async function ensureAuthenticated(): Promise<void> {
+  // ── Config validation ──────────────────────────────────────────
+  if (!isAuthConfigured()) {
+    const cfg = getConfig();
+    const details = [
+      `supabaseUrl: ${cfg.supabaseUrl ? '✅' : '❌ missing'}`,
+      `supabaseAnonKey: ${cfg.supabaseAnonKey ? '✅' : '❌ missing'}`,
+      `domain: ${window.location.origin}`,
+    ].join(', ');
+    console.error(`[AUTH] Config incompleta: ${details}`);
+    throw new Error(
+      `Configuração de autenticação incompleta (${details}). ` +
+      'Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente.'
+    );
+  }
+
+  if (!supabase) {
+    throw new Error('Supabase client não inicializado. Verifique as variáveis de ambiente.');
+  }
+
+  // ── Check existing session ─────────────────────────────────────
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
     syncSessionToLegacyStorage({ access_token: session.access_token, refresh_token: session.refresh_token });
     return;
   }
 
+  // ── Show auth overlay ──────────────────────────────────────────
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.id = 'auth-gate';
@@ -30,10 +52,8 @@ export async function ensureAuthenticated(): Promise<void> {
 
     const root = createRoot(overlay);
     const handleAuthenticated = async () => {
-      // Await session sync before resolving — ensures legacy token keys are
-      // populated before init() runs and buildHeaders() reads them.
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await supabase!.auth.getSession();
         if (data.session) {
           syncSessionToLegacyStorage({
             access_token: data.session.access_token,
