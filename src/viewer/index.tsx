@@ -1400,6 +1400,8 @@ const init = async () => {
                 currentSchemaVersion = 1;
                 lessonSteps = [];
                 engine = createEngineV1();
+                engine.setTimer(lessonTimer); // 🔒 wire timer so forceEnd() stops the HUD interval
+                sessionController = new LessonSessionController({ timer: lessonTimer, frameLoop: transportClient, engine });
                 setupEngineEndCallback(); // PR2: Setup endscreen callback
 
                 const basePayload: LessonContentPacket = {
@@ -1514,6 +1516,8 @@ const init = async () => {
                     .map(({ step }) => step);
                 lessonSteps = orderedSteps;
                 engine = createEngineV2();
+                engine.setTimer(lessonTimer); // 🔒 wire timer so forceEnd() stops the HUD interval
+                sessionController = new LessonSessionController({ timer: lessonTimer, frameLoop: transportClient, engine });
                 setupEngineEndCallback(); // PR2: Setup endscreen callback
 
                 const { renderNotes, startIndexByStep } = deriveRenderNotesFromV2Steps(orderedSteps);
