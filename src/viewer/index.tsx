@@ -2326,7 +2326,28 @@ const init = async () => {
         }
     }
 
-    const startChapter = (chapterId: number) => {
+    /** Start a lesson by explicit lesson_id (for upload chapters with multiple lessons) */
+    async function startLessonViaRestWithLessonId(chapterId: number, lessonId: string) {
+        const sessionPayload = {
+            lesson_id: lessonId,
+            client: buildSessionClientInfo(),
+            session_config: buildSessionConfig(),
+        };
+        try {
+            const sessionData = await fetchWithAuth("/v1/sessions", {
+                method: "POST",
+                body: JSON.stringify(sessionPayload),
+            });
+            const lessonData = await fetchWithAuth(`/v1/sessions/${sessionData.session_id}/lesson`, {
+                method: "GET",
+            });
+            handleLessonContent(toLessonContentPayload(lessonData), { targetMode: "WAIT", reason: "rest_upload_lesson" });
+            console.log(`[REST LESSON] upload lesson started: chapter=${chapterId} lesson=${lessonId} session=${sessionData.session_id}`);
+        } catch (error) {
+            console.error(`[REST LESSON] Failed to start upload lesson chapter=${chapterId} lesson=${lessonId}`, error);
+        }
+    }
+
         pendingStartChapterId = chapterId;
         resetSessionState("chapter_change_pending");
         sessionCtx = { ...sessionCtx, id: null, lessonId: null };
