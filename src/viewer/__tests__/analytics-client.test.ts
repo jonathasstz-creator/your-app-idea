@@ -96,13 +96,9 @@ describe("AnalyticsClient — buildHeaders via fetchOverview", () => {
     await expect(client.fetchOverview()).rejects.toThrow(/rede|offline|fetch/i);
   });
 
-  it("static mode fetches fallback (needs token for API path, but static skips it)", async () => {
-    // AnalyticsClient reads config at construction. We must set window.__APP_CONFIG__
-    // and provide a token since even static mode in the real code falls through API first
-    // if mode resolves from config. Let's test the actual static fallback path.
-    syncSessionToLegacyStorage({ access_token: "static-test-jwt" });
+  it("API failure with static fallback enabled falls back to static", async () => {
+    syncSessionToLegacyStorage({ access_token: "fallback-jwt" });
 
-    // Mock: API call fails, fallback succeeds
     const fallbackData = {
       generated_at: "2026-01-01",
       user_id: "static",
@@ -117,37 +113,52 @@ describe("AnalyticsClient — buildHeaders via fetchOverview", () => {
       unlocks: [],
     };
 
-    // First call (API) fails, second call (fallback) succeeds
+    // API fails (first call), fallback succeeds (second call)
     (fetch as any)
-      .mockRejectedValueOnce(new TypeError("API down"))
+      .mockResolvedValueOnce({ ok: false, status: 500 })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: () => Promise.resolve(fallbackData),
       });
 
+    // Mock getConfig to enable static fallback
+    const configMod = await import("../../config/app-config");
+    const spy = vi.spyOn(configMod, "getConfig").mockReturnValue({
+      supabaseUrl: "",
+      supabaseAnonKey: "",
+      apiBaseUrl: "https://api.test.com",
+      analyticsApiUrl: "https://api.test.com",
+      analyticsMode: "api",
+      enableStaticFallback: true,
+    });
+
     const { AnalyticsClient } = await import("../analytics-client");
     const client = new AnalyticsClient();
-
-    // The client is in "api" mode with enableStaticFallback.
-    // When API fails, it falls back to static.
     const { source } = await client.fetchOverview();
     expect(source).toBe("static");
+
+    spy.mockRestore();
   });
 
-  it("off mode throws with analytics disabled message", async () => {
-    // Set analyticsMode to "off" via runtime config
-    window.__APP_CONFIG__ = { ...window.__APP_CONFIG__, analyticsMode: "off" };
+  it("analyticsMode=off throws immediately without fetch", async () => {
+    const configMod = await import("../../config/app-config");
+    const spy = vi.spyOn(configMod, "getConfig").mockReturnValue({
+      supabaseUrl: "",
+      supabaseAnonKey: "",
+      apiBaseUrl: "",
+      analyticsApiUrl: "",
+      analyticsMode: "off",
+      enableStaticFallback: false,
+    });
 
-    // Need to bust module cache to pick up new config
     const { AnalyticsClient } = await import("../analytics-client");
     const client = new AnalyticsClient();
 
     await expect(client.fetchOverview()).rejects.toThrow(/desativado/i);
     expect(fetch).not.toHaveBeenCalled();
 
-    // Cleanup
-    delete window.__APP_CONFIG__?.analyticsMode;
+    spy.mockRestore();
   });
 });
 
