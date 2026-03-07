@@ -1,5 +1,6 @@
 
 import { getAuthTokenFromStorage } from "./auth-storage";
+import { getConfig } from "../config/app-config";
 
 export interface StatsRange {
   from: string;
@@ -148,12 +149,10 @@ export class AnalyticsClient {
   private readonly enableStaticFallback: boolean;
 
   constructor() {
-    const metaEnv = (import.meta as any).env;
-    const envBase = metaEnv.VITE_VIEWER_API_URL ?? "";
-    this.baseUrl = envBase.replace(/\/$/, "");
-    this.mode = this.resolveMode(metaEnv.VITE_ANALYTICS_MODE);
-    const fallbackFlag = metaEnv.VITE_ENABLE_STATIC_FALLBACK ?? "false";
-    this.enableStaticFallback = String(fallbackFlag).toLowerCase() === "true";
+    const config = getConfig();
+    this.baseUrl = config.analyticsApiUrl || config.apiBaseUrl || '';
+    this.mode = this.resolveMode(config.analyticsMode);
+    this.enableStaticFallback = config.enableStaticFallback;
   }
 
   loadCache(): StatsCacheEntry | null {

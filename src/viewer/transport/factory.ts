@@ -14,6 +14,7 @@
 import type { ITransport } from './transport';
 import { RestTransport } from './rest-transport';
 import { WebSocketTransport, type WsState } from './ws-transport';
+import { getConfig } from '../../config/app-config';
 
 // Re-export types for convenience
 export type { ITransport } from './transport';
@@ -32,11 +33,7 @@ export function createTransport(
     }
 
     // 2. Detect based on API base URL
-    const apiBase = (
-        (import.meta as any).env?.VITE_API_BASE_URL ||
-        (import.meta as any).env?.VITE_VIEWER_API_URL ||
-        'http://127.0.0.1:8002/v1'
-    ).replace(/\/$/, '');
+    const apiBase = getConfig().apiBaseUrl || '';
 
     // Port 8001 = WebSocket (legacy desktop)
     if (apiBase.includes(':8001')) {

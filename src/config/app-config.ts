@@ -75,7 +75,44 @@ function resolve(
 let _config: AppConfig | null = null;
 let _runtimeLoaded = false;
 
+function isLocalhost(url: string): boolean {
+  return /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(url);
+}
+
+function isProduction(): boolean {
+  try {
+    return (import.meta as any).env?.PROD === true ||
+      (typeof window !== 'undefined' && !isLocalhost(window.location.origin));
+  } catch {
+    return false;
+  }
+}
+
 function buildConfig(): AppConfig {
+  const rawApiBase = resolve('apiBaseUrl', 'apiBaseUrl', [
+    'VITE_API_BASE_URL',
+    'VITE_VIEWER_API_URL',
+  ], '');
+
+  // In production, NEVER silently fall back to localhost
+  let apiBaseUrl: string;
+  if (rawApiBase && !isLocalhost(rawApiBase)) {
+    apiBaseUrl = rawApiBase.replace(/\/$/, '');
+  } else if (isProduction()) {
+    // Production without a valid public API URL — leave empty to trigger error
+    apiBaseUrl = '';
+    if (rawApiBase) {
+      console.error('[config] ⚠️ apiBaseUrl aponta para localhost em produção — ignorado:', rawApiBase);
+    }
+  } else {
+    // Dev: allow localhost or empty (Vite proxy via relative paths)
+    apiBaseUrl = rawApiBase ? rawApiBase.replace(/\/$/, '') : '';
+  }
+
+  const rawAnalytics = resolve('analyticsApiUrl', 'analyticsApiUrl', [
+    'VITE_VIEWER_API_URL',
+  ]);
+
   return {
     supabaseUrl: resolve('supabaseUrl', 'supabaseUrl', [
       'VITE_SUPABASE_URL',
@@ -84,13 +121,8 @@ function buildConfig(): AppConfig {
       'VITE_SUPABASE_PUBLISHABLE_KEY',
       'VITE_SUPABASE_ANON_KEY',
     ]),
-    apiBaseUrl: resolve('apiBaseUrl', 'apiBaseUrl', [
-      'VITE_API_BASE_URL',
-      'VITE_VIEWER_API_URL',
-    ], 'http://127.0.0.1:8002'),
-    analyticsApiUrl: resolve('analyticsApiUrl', 'analyticsApiUrl', [
-      'VITE_VIEWER_API_URL',
-    ]),
+    apiBaseUrl,
+    analyticsApiUrl: (rawAnalytics && !isLocalhost(rawAnalytics) ? rawAnalytics : apiBaseUrl).replace(/\/$/, ''),
     analyticsMode: resolve('analyticsMode', 'analyticsMode', [
       'VITE_ANALYTICS_MODE',
     ], 'api'),
@@ -175,4 +207,40 @@ export function isDev(): boolean {
 export function isAuthConfigured(): boolean {
   const c = getConfig();
   return Boolean(c.supabaseUrl && c.supabaseAnonKey);
+}
+
+/**
+ * Build a full API URL from a path.
+ * In dev (no apiBaseUrl), returns relative path for Vite proxy.
+ * In production, prepends the configured apiBaseUrl.
+ * Throws if production and no apiBaseUrl configured.
+ */
+export function buildApiUrl(path: string): string {
+  const c = getConfig();
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+
+  if (c.apiBaseUrl) {
+    return `${c.apiBaseUrl}${cleanPath}`;
+  }
+
+  // Dev: relative path works with Vite proxy
+  if (isDev()) {
+    return cleanPath;
+  }
+
+  // Production without apiBaseUrl — critical misconfiguration
+  console.error('[config] ❌ apiBaseUrl não configurada em produção. Requests de API falharão.');
+  return cleanPath; // still return to avoid crash, but log the error
+}
+
+/**
+ * Get the API base URL. Throws descriptive error in production if missing.
+ */
+export function getApiBaseUrl(): string {
+  const c = getConfig();
+  if (c.apiBaseUrl) return c.apiBaseUrl;
+  if (isDev()) return '';
+  throw new Error(
+    'API base URL não configurada. Defina apiBaseUrl em /config.json, window.__APP_CONFIG__ ou VITE_API_BASE_URL.'
+  );
 }
