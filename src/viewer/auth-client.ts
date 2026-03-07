@@ -1,20 +1,32 @@
-import { createClient, type Session } from '@supabase/supabase-js';
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { getConfig, isAuthConfigured, isDev } from '../config/app-config';
 
-const supabaseUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = ((import.meta as any)?.env?.VITE_SUPABASE_PUBLISHABLE_KEY || (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY) as string | undefined;
+let _client: SupabaseClient | null = null;
 
-export const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    })
-  : null;
+function initClient(): SupabaseClient | null {
+  if (!isAuthConfigured()) {
+    if (isDev()) {
+      console.warn('[auth-client] Supabase não configurado.');
+    }
+    return null;
+  }
+  const cfg = getConfig();
+  return createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
+}
 
-export const assertSupabaseClient = () => {
+export const supabase: SupabaseClient | null = (() => {
+  _client = initClient();
+  return _client;
+})();
+
+export const assertSupabaseClient = (): SupabaseClient => {
   if (!supabase) {
-    throw new Error('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no viewer/.env');
+    throw new Error('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
   }
   return supabase;
 };

@@ -1,10 +1,24 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { getConfig, isAuthConfigured, isDev } from '../../config/app-config';
 
-const url = (import.meta.env.VITE_SUPABASE_URL ?? '') as string;
-const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '') as string;
+let _client: SupabaseClient | null = null;
 
-if (!url || !key) {
-  console.warn('[auth] VITE_SUPABASE_URL ou VITE_SUPABASE_ANON_KEY não configurados. Auth desabilitado.');
+function initClient(): SupabaseClient | null {
+  if (!isAuthConfigured()) {
+    if (isDev()) {
+      console.warn('[auth] Supabase não configurado. Auth desabilitado.');
+    }
+    return null;
+  }
+  const cfg = getConfig();
+  return createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 }
 
-export const supabase = url && key ? createClient(url, key) : null;
+/**
+ * Supabase client singleton.
+ * Returns null if config is missing (graceful degradation).
+ */
+export const supabase: SupabaseClient | null = (() => {
+  _client = initClient();
+  return _client;
+})();
