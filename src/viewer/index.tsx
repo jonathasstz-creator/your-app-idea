@@ -65,8 +65,9 @@ let eventSeq = 0;
 let t0Perf = 0;
 let filmHudFlash: { status: "HIT" | "MISS" | "LATE"; untilMs: number } | null = null;
 let featureFlagSnapshot: FeatureFlags = featureFlags.snapshot();
-// Declare lessonTimer at module scope so it can be used by pushEvent
+// Declare lessonTimer and sessionController at module scope so pushEvent can access them
 let lessonTimer: LessonTimer;
+let sessionController: LessonSessionController | null = null;
 
 const resetEventStream = (sessionId: string | null, lessonId: string | null, mode: LessonMode, totalSteps: number | null) => {
     eventStream = [];
@@ -81,10 +82,8 @@ const pushEvent = (type: EventV1["type"], payload: Omit<EventV1, "type" | "seq" 
     eventSeq += 1;
     const t_ms = Math.round(performance.now() - t0Perf);
 
-    // Start timer on first note activity
-    if ((type === 'note_on' || type === 'note_result') && typeof lessonTimer !== 'undefined' && !lessonTimer.isRunning()) {
-        lessonTimer.start();
-    }
+    // Start timer on first note activity (guarded: never after lesson ends)
+    maybeStartLessonTimer(type, typeof lessonTimer !== 'undefined' ? lessonTimer : undefined, sessionController?.isEnded() ?? false);
 
     eventStream.push({ ...(payload as any), type, seq: eventSeq, t_ms });
 };
