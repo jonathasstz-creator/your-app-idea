@@ -850,9 +850,15 @@ const init = async () => {
         trailNavReactRoot.render(
             <TrailNavigator
                 trails={catalogService.getTrails()}
-                onSelectChapter={(chapterId) => {
+                onSelectChapter={(chapterId, lessonId) => {
                     close();
-                    startChapter(chapterId);
+                    // If a specific lessonId was selected (e.g. from upload chapter),
+                    // override the default lesson mapping for this session
+                    if (lessonId) {
+                        startChapterWithLesson(chapterId, lessonId);
+                    } else {
+                        startChapter(chapterId);
+                    }
                     setRoute('trainer');
                 }}
                 onClose={close}
@@ -2320,6 +2326,28 @@ const init = async () => {
         }
     }
 
+    /** Start a lesson by explicit lesson_id (for upload chapters with multiple lessons) */
+    async function startLessonViaRestWithLessonId(chapterId: number, lessonId: string) {
+        const sessionPayload = {
+            lesson_id: lessonId,
+            client: buildSessionClientInfo(),
+            session_config: buildSessionConfig(),
+        };
+        try {
+            const sessionData = await fetchWithAuth("/v1/sessions", {
+                method: "POST",
+                body: JSON.stringify(sessionPayload),
+            });
+            const lessonData = await fetchWithAuth(`/v1/sessions/${sessionData.session_id}/lesson`, {
+                method: "GET",
+            });
+            handleLessonContent(toLessonContentPayload(lessonData), { targetMode: "WAIT", reason: "rest_upload_lesson" });
+            console.log(`[REST LESSON] upload lesson started: chapter=${chapterId} lesson=${lessonId} session=${sessionData.session_id}`);
+        } catch (error) {
+            console.error(`[REST LESSON] Failed to start upload lesson chapter=${chapterId} lesson=${lessonId}`, error);
+        }
+    }
+
     const startChapter = (chapterId: number) => {
         pendingStartChapterId = chapterId;
         resetSessionState("chapter_change_pending");
@@ -2338,6 +2366,18 @@ const init = async () => {
                 console.warn(`[REST LESSON] fallback WS chapter_id=${chapterId}`, error);
             });
         }
+    };
+
+    /** Start a chapter with a specific lesson ID (e.g. from upload chapters with multiple lessons) */
+    const startChapterWithLesson = (chapterId: number, lessonId: string) => {
+        pendingStartChapterId = chapterId;
+        resetSessionState("chapter_change_pending");
+        sessionCtx = { ...sessionCtx, id: null, lessonId: null };
+        setChapterOverlayOpen(false);
+        // Go directly via REST with the specific lesson_id
+        startLessonViaRestWithLessonId(chapterId, lessonId).catch((error) => {
+            console.warn(`[REST LESSON] fallback for upload lesson chapter=${chapterId} lesson=${lessonId}`, error);
+        });
     };
 
     const setChapterOverlayOpen = (open: boolean) => {
