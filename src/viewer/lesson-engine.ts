@@ -44,6 +44,7 @@ export interface LessonEngineApi {
   setMode(mode: LessonMode): void;
   reset(): void;
   forceEnd(): void;
+  setTimer(timer: { stop: () => void } | null): void;
   onMidiInput(midi: number, velocity: number, isOn: boolean): { advanced: boolean; result: ResultStatus; score: number; streak: number };
   judgeFilmNoteOn(
     midi: number,
