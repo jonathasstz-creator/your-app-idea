@@ -1,3 +1,22 @@
+/**
+ * Auto-start rule for pushEvent in index.tsx.
+ * Extracted as a pure function to be unit-testable.
+ */
+export function maybeStartLessonTimer(
+    eventType: string,
+    timer: LessonTimer | undefined,
+    isEnded: boolean
+): void {
+    if (
+        (eventType === 'note_on' || eventType === 'note_result') &&
+        timer !== undefined &&
+        !timer.isRunning() &&
+        !isEnded // guard: never restart after forceEnd/endLesson
+    ) {
+        timer.start();
+    }
+}
+
 export class LessonTimer {
     private startTime: number = 0;
     private elapsedFrozen: number = 0;

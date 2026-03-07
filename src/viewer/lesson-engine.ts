@@ -132,6 +132,7 @@ class LessonEngineV1 implements LessonEngineApi {
   private stepStartTime = 0;
   private onEndedCallback: (() => void) | null = null;
   private timer: { stop: () => void } | null = null;
+  private endedNotified = false;
 
   loadLesson(content: EngineLessonV1) {
     this.lesson = content;
@@ -153,6 +154,7 @@ class LessonEngineV1 implements LessonEngineApi {
   reset() {
     this.currentStep = 0;
     this.isEnded = false;
+    this.endedNotified = false;
     this.score = 0;
     this.streak = 0;
     this.bestStreak = 0;
@@ -391,9 +393,9 @@ class LessonEngineV1 implements LessonEngineApi {
     console.log(`[EngineV1] onStepComplete: step=${this.currentStep}, total=${this.notes.length}, status=${status}`);
 
     if (this.currentStep >= this.notes.length) {
-      console.log('[EngineV1] Lesson completed! Calling forceEnd and notifyEnded');
+      console.log('[EngineV1] Lesson completed! Calling forceEnd');
+      // forceEnd() already calls notifyEnded() internally — do NOT call it again here
       this.forceEnd();
-      this.notifyEnded();
     }
   }
 
@@ -476,6 +478,8 @@ class LessonEngineV1 implements LessonEngineApi {
 
   private notifyEnded() {
     console.log(`[EngineV1] notifyEnded: hasCallback=${!!this.onEndedCallback}, isEnded=${this.isEnded}`);
+    if (this.endedNotified) return; // idempotent — prevents double-fire
+    this.endedNotified = true;
     if (this.onEndedCallback && this.isEnded) {
       console.log('[EngineV1] Calling onEndedCallback via setTimeout');
       // Defer to allow state to settle
@@ -512,6 +516,7 @@ class LessonEngineV2 implements LessonEngineApi {
   private stepStartTime = 0;
   private onEndedCallback: (() => void) | null = null;
   private timer: { stop: () => void } | null = null;
+  private endedNotified = false;
 
   loadLesson(content: EngineLessonV2) {
     this.lesson = content;
@@ -540,6 +545,7 @@ class LessonEngineV2 implements LessonEngineApi {
   reset() {
     this.currentStep = 0;
     this.isEnded = false;
+    this.endedNotified = false;
     this.score = 0;
     this.streak = 0;
     this.bestStreak = 0;
@@ -854,9 +860,9 @@ class LessonEngineV2 implements LessonEngineApi {
     console.log(`[EngineV2] onStepComplete: step=${this.currentStep}, total=${this.steps.length}, status=${status}`);
 
     if (this.currentStep >= this.steps.length) {
-      console.log('[EngineV2] Lesson completed! Calling forceEnd and notifyEnded');
+      console.log('[EngineV2] Lesson completed! Calling forceEnd');
+      // forceEnd() already calls notifyEnded() internally — do NOT call it again here
       this.forceEnd();
-      this.notifyEnded();
     }
   }
 
@@ -991,6 +997,8 @@ class LessonEngineV2 implements LessonEngineApi {
 
   private notifyEnded() {
     console.log(`[EngineV2] notifyEnded: hasCallback=${!!this.onEndedCallback}, isEnded=${this.isEnded}`);
+    if (this.endedNotified) return; // idempotent — prevents double-fire
+    this.endedNotified = true;
     if (this.onEndedCallback && this.isEnded) {
       console.log('[EngineV2] Calling onEndedCallback via setTimeout');
       // Defer to allow state to settle

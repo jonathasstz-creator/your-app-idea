@@ -13,6 +13,7 @@ export interface PianoNote {
   duration?: number;
   duration_beats?: number;
   targetBeat?: number;
+  hand_role?: string | null; // "left" | "right" | null (polyphonic V2)
 }
 
 

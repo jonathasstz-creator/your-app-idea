@@ -2,6 +2,7 @@ export type FeatureFlagName =
   | 'showSheetMusic'
   | 'showFallingNotes'
   | 'showNewCurriculum'
+  | 'showIntermediateCurriculum'
   | 'useWebSocket';
 
 export type FeatureFlags = Record<FeatureFlagName, boolean>;
@@ -22,5 +23,6 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   showSheetMusic: true,
   showFallingNotes: true,
   showNewCurriculum: true,
+  showIntermediateCurriculum: true,
   useWebSocket: false,
 };
