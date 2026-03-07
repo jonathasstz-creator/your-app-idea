@@ -1,0 +1,4 @@
+{
+  "_comment": "Runtime config — override build-time VITE_* vars without rebuild. Values here take precedence over import.meta.env but are overridden by window.__APP_CONFIG__.",
+  "_docs": "Keys match AppConfig interface in src/config/app-config.ts"
+}
