@@ -906,35 +906,40 @@ const init = async () => {
 
     // Configure engine end callback (PR2/PR3)
     const setupEngineEndCallback = () => {
-      engine.setOnEnded(() => {
-        console.log('[Endscreen] Lesson ended, computing result...');
-        const attempts = engine.getAttemptLog();
-        const meta = engine.getLessonMeta();
-        
-        if (attempts.length === 0) {
-          console.log('[Endscreen] No attempts logged, skipping endscreen');
-          return;
-        }
+        engine.setOnEnded(() => {
+            // 🔒 Atomic shutdown — stop timer + frameLoop immediately (idempotent)
+            sessionController?.endLesson("COMPLETE");
+            console.log('[Endscreen] Lesson ended, computing result...');
+            // 🔒 Stop transport loop + metronome immediately (kills [ENGINE_FRAME] in WAIT mode)
+            transportClient.stop();
+            transportMetronome.stop();
+            const attempts = engine.getAttemptLog();
+            const meta = engine.getLessonMeta();
 
-        // PR3: Use V2 for FILM mode, V1 for WAIT mode
-        const isFilm = practiceMode === 'FILM';
-        const version = isFilm ? 'V2' : 'V1';
-        
-        console.log(`[Endscreen] Mode: ${practiceMode}, Using version: ${version}`);
+            if (attempts.length === 0) {
+                console.log('[Endscreen] No attempts logged, skipping endscreen');
+                return;
+            }
 
-        const result = computeTaskResult(
-          attempts,
-          meta.totalSteps,
-          isFilm ? 'FILM' : 'WAIT',
-          meta.lessonId ?? undefined,
-          meta.chapterId ?? undefined,
-          version // PR3: V2 for FILM, V1 for WAIT
-        );
+            // Use schema version (not practice mode) to identify V1/V2 engine correctly
+            // V2 engine is used for polyphonic chapters in WAIT mode too
+            const version = currentSchemaVersion === 2 ? 'V2' : 'V1';
 
-        console.log('[Endscreen] Dispatching result:', result);
-        dispatchTaskCompletion(result);
-        showEndscreen(result);
-      });
+            console.log(`[Endscreen] Mode: ${practiceMode}, Using version: ${version}`);
+
+            const result = computeTaskResult(
+                attempts,
+                meta.totalSteps,
+                practiceMode === 'FILM' ? 'FILM' : 'WAIT',
+                meta.lessonId ?? undefined,
+                meta.chapterId ?? undefined,
+                version // PR3: V2 for FILM, V1 for WAIT
+            );
+
+            console.log('[Endscreen] Dispatching result:', result);
+            dispatchTaskCompletion(result);
+            showEndscreen(result);
+        });
     };
 
     // PR3: Find next lesson in catalog
