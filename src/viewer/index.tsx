@@ -246,11 +246,9 @@ const formatDashboardError = (error: unknown): string => {
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const debugInputLogging = localStorage.getItem("debug_input") === "1";
 
-const API_BASE_URL = (
-    (import.meta as any).env?.VITE_API_BASE_URL ||
-    (import.meta as any).env?.VITE_VIEWER_API_URL ||
-    "http://127.0.0.1:8002"
-).replace(/\/$/, "");
+import { getConfig, buildApiUrl as centralBuildApiUrl, getApiBaseUrl } from '../config/app-config';
+
+const API_BASE_URL = getConfig().apiBaseUrl;
 let useRestSessionLesson = String(
     (import.meta as any).env?.VITE_USE_REST_SESSION_LESSON ?? "true"
 ).toLowerCase() !== "false";
@@ -269,13 +267,7 @@ const buildAuthHeaders = (): Headers => {
     return headers;
 };
 
-const buildApiUrl = (path: string): string => {
-    const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    if (!API_BASE_URL) {
-        return cleanPath;
-    }
-    return new URL(cleanPath, API_BASE_URL).toString();
-};
+const buildApiUrl = (path: string): string => centralBuildApiUrl(path);
 
 const fetchWithAuth = async (path: string, options: RequestInit = {}): Promise<any> => {
     const endpoint = buildApiUrl(path);
