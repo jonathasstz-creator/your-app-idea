@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-03-08 — pós-migração do catálogo local e auth non-blocking.
+> **Última atualização:** 2026-03-08 — design system CSS consolidado + TrailNavigator reescrito com UI rica.
 
 ---
 
