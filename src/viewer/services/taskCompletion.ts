@@ -42,7 +42,46 @@ export function computeTaskResult(
   chapterId?: number,
   version: "V1" | "V2" = "V1"
 ): TaskResultSummary {
-  const correctSteps = attempts.filter((a) => a.success).length;
+  // ── Derive correctSteps at the RIGHT granularity ──
+  // V1: 1 attempt = 1 step (note-level == step-level), so counting successes works.
+  // V2: 1 step can have N notes, each logged individually. A step is "correct"
+  //     only when ALL its notes were hit. We derive this from unique stepIndex
+  //     values where the engine advanced (onStepComplete('HIT')).
+  //     The engine logs each note individually with success=true, then advances
+  //     the step. So a completed step has ALL its note attempts marked success
+  //     for that stepIndex.
+  let correctSteps: number;
+  let totalExpectedNotes: number | undefined;
+  let correctNotes: number | undefined;
+
+  if (version === "V2") {
+    // Group attempts by stepIndex to determine step-level completion
+    const stepMap = new Map<number, { successes: number; total: number }>();
+    for (const a of attempts) {
+      if (!stepMap.has(a.stepIndex)) {
+        stepMap.set(a.stepIndex, { successes: 0, total: 0 });
+      }
+      const entry = stepMap.get(a.stepIndex)!;
+      entry.total++;
+      if (a.success) entry.successes++;
+    }
+    // A step counts as correct only if it has at least one success AND no failures
+    // (the engine resets stepState on MISS, so a completed step has only successes)
+    correctSteps = 0;
+    for (const [, entry] of stepMap) {
+      const hasFail = entry.total > entry.successes;
+      if (entry.successes > 0 && !hasFail) {
+        correctSteps++;
+      }
+    }
+    // Note-level metrics
+    totalExpectedNotes = attempts.length;
+    correctNotes = attempts.filter((a) => a.success).length;
+  } else {
+    // V1: 1 attempt = 1 step
+    correctSteps = attempts.filter((a) => a.success).length;
+  }
+
   const scoreBase = correctSteps * SCORE_PER_CORRECT;
 
   // Extract timing data
@@ -161,6 +200,10 @@ export function computeTaskResult(
   const perChord = hasChords ? computePerChordStatsV2(attempts) : [];
   const perNote = computePerNoteStatsV1(attempts);
 
+  const noteAccuracy = totalExpectedNotes && totalExpectedNotes > 0
+    ? correctNotes! / totalExpectedNotes
+    : undefined;
+
   return {
     version: "V2",
     mode,
@@ -168,6 +211,9 @@ export function computeTaskResult(
     chapterId,
     totalSteps,
     correctSteps,
+    totalExpectedNotes,
+    correctNotes,
+    noteAccuracy,
     scoreBase,
     timeBonus: 0, // TODO: implementar logic de time bonus
     totalScore: scoreBase, // = scoreBase + 0

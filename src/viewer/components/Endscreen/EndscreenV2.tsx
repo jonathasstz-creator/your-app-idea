@@ -113,15 +113,21 @@ export const EndscreenV2: React.FC<EndscreenV2Props> = ({
         {/* Summary */}
         <div className="endscreen-summary-v2">
           <div className="summary-row">
-            <span className="label">Respostas Corretas</span>
+            <span className="label">Steps Corretos</span>
             <span className="value">
               {result.correctSteps} / {result.totalSteps}
             </span>
           </div>
           <div className="summary-row">
-            <span className="label">Acurácia</span>
+            <span className="label">Acurácia (Steps)</span>
             <span className="value percentage">{percentage}%</span>
           </div>
+          {result.noteAccuracy !== undefined && (
+            <div className="summary-row">
+              <span className="label">Acurácia (Notas)</span>
+              <span className="value percentage">{Math.round(result.noteAccuracy * 100)}%</span>
+            </div>
+          )}
         </div>
 
         {/* Threshold 3 Stars */}
