@@ -1,172 +1,153 @@
 
 
-## Diff completo da atualização de scoring V2
+## Plan: Senior-level scoring contract fix (V2 accuracy)
 
-Aqui estao os 3 arquivos alterados e 1 espelho legado. Vou apresentar o estado final de cada um — que e o que esta no repo agora.
+### Diagnosis of current patch weaknesses
 
-### Resumo das mudancas
+1. **`totalExpectedNotes = attempts.length`** — Wrong. Attempts include retries/misses. For 20 steps × 2 notes, expected is always 40, but attempts can be 60+ with retries.
 
-**4 arquivos tocados:**
+2. **`correctNotes = attempts.filter(success).length`** — Can inflate with duplicate successes across retries of the same step.
 
-1. `src/viewer/services/taskCompletion.ts` — Core fix: `computeTaskResult()` agora agrupa attempts por `stepIndex` no V2 para derivar `correctSteps` no nivel de step (nao nota). Adicionou campos `totalExpectedNotes`, `correctNotes`, `noteAccuracy`.
+3. **`correctSteps` = "all attempts for stepIndex have success"** — Too strict. In V2 WAIT mode, a MISS resets `stepState` and the student retries. The step IS eventually completed (engine advances `currentStep`), but earlier failed attempts remain in the log, causing `hasFail = true` and incorrectly zeroing the step.
 
-2. `src/viewer/types/task.ts` — Adicionou 3 campos em `TaskResultSummaryV2`: `totalExpectedNotes?`, `correctNotes?`, `noteAccuracy?`.
+### Root cause: the engine already knows the answers
 
-3. `src/viewer/components/Endscreen/EndscreenV2.tsx` — UI: mudou label de "Respostas Corretas" para "Steps Corretos", de "Acuracia" para "Acuracia (Steps)", e adicionou linha complementar "Acuracia (Notas)" quando `noteAccuracy` existe.
+Looking at `LessonEngineV2`:
+- **`this.score`** increments exactly once per completed step (line 849). This IS `completedSteps`.
+- **`this.steps`** contains the lesson structure with `notes[]` arrays. `sum(step.notes.length)` IS `totalExpectedNotes`.
+- For completed steps, ALL notes were hit by definition (engine only advances when `chordNotes.every(m => stepState.has(m))`).
 
-4. `viewer/types/task.ts` — Espelho legado: mesmas 3 propriedades adicionadas em `TaskResultSummaryV2`.
+### Changes (4 files)
 
----
+**1. `src/viewer/lesson-engine.ts`** — Expose engine truth via `LessonEngineApi`
 
-### Diff por arquivo
+Add two methods to the interface and both implementations:
 
-#### 1. `src/viewer/services/taskCompletion.ts`
-
-**ANTES (linhas 44-85 aprox):**
 ```ts
-): TaskResultSummary {
-  const correctSteps = attempts.filter((a) => a.success).length;
-  const scoreBase = correctSteps * SCORE_PER_CORRECT;
+// Add to LessonEngineApi interface:
+getCompletedSteps(): number;
+getTotalExpectedNotes(): number;
+
+// V1 implementation:
+getCompletedSteps() { return this.score; }
+getTotalExpectedNotes() { return this.notes.length; }
+
+// V2 implementation:
+getCompletedSteps() { return this.score; }
+getTotalExpectedNotes() { 
+  return this.steps.reduce((sum, s) => sum + (s.notes?.length ?? 0), 0); 
+}
 ```
 
-**DEPOIS:**
-```ts
-): TaskResultSummary {
-  let correctSteps: number;
-  let totalExpectedNotes: number | undefined;
-  let correctNotes: number | undefined;
+**2. `src/viewer/services/taskCompletion.ts`** — Use engine truth, not attempt aggregation
 
-  if (version === "V2") {
-    // Group attempts by stepIndex to determine step-level completion
-    const stepMap = new Map<number, { successes: number; total: number }>();
-    for (const a of attempts) {
-      if (!stepMap.has(a.stepIndex)) {
-        stepMap.set(a.stepIndex, { successes: 0, total: 0 });
-      }
-      const entry = stepMap.get(a.stepIndex)!;
-      entry.total++;
-      if (a.success) entry.successes++;
-    }
-    // A step counts as correct only if successes > 0 AND no failures
-    correctSteps = 0;
-    for (const [, entry] of stepMap) {
-      const hasFail = entry.total > entry.successes;
-      if (entry.successes > 0 && !hasFail) {
-        correctSteps++;
-      }
-    }
-    // Note-level metrics
-    totalExpectedNotes = attempts.length;
-    correctNotes = attempts.filter((a) => a.success).length;
-  } else {
-    // V1: 1 attempt = 1 step
-    correctSteps = attempts.filter((a) => a.success).length;
+Change `computeTaskResult` signature to accept optional engine-derived stats:
+
+```ts
+export function computeTaskResult(
+  attempts: AttemptLog[],
+  totalSteps: number,
+  mode: TaskMode,
+  lessonId?: string,
+  chapterId?: number,
+  version: "V1" | "V2" = "V1",
+  engineStats?: { completedSteps: number; totalExpectedNotes: number }
+): TaskResultSummary
+```
+
+New V2 logic:
+- `correctSteps = engineStats.completedSteps` (from engine, not attempt aggregation)
+- `totalExpectedNotes = engineStats.totalExpectedNotes` (from lesson structure)
+- `correctNotes`: for completed steps, all notes count. For incomplete steps, count unique expected midis that got a success. This avoids retry/duplicate inflation.
+
+```ts
+if (version === "V2" && engineStats) {
+  correctSteps = engineStats.completedSteps;
+  totalExpectedNotes = engineStats.totalExpectedNotes;
+  
+  // correctNotes: completed steps contribute all their notes.
+  // For the incomplete/partial step, count unique expected midis with success.
+  const completedNotes = correctSteps > 0
+    ? attempts
+        .filter(a => a.stepIndex < correctSteps && a.success)
+        // But we need notes-per-step from structure... 
+        // Simpler: completedSteps * avg notes won't work.
+        // Best: all expected notes for completed steps are correct by definition
+    : 0;
+  // Since we don't have the step structure here, derive from attempts:
+  // Group by stepIndex, for steps < completedSteps: count unique expected midis
+  const stepNoteCount = new Map<number, Set<number>>();
+  for (const a of attempts) {
+    if (!stepNoteCount.has(a.stepIndex)) stepNoteCount.set(a.stepIndex, new Set());
+    const expected = Array.isArray(a.expected) ? a.expected : [a.expected];
+    expected.forEach(e => stepNoteCount.get(a.stepIndex)!.add(e));
   }
-
-  const scoreBase = correctSteps * SCORE_PER_CORRECT;
+  // Completed steps: all expected notes are correct
+  let cn = 0;
+  for (const [si, expectedSet] of stepNoteCount) {
+    if (si < correctSteps) {
+      cn += expectedSet.size; // all notes of completed step
+    } else {
+      // Partial: count unique expected midis with at least one success
+      const successMidis = new Set<number>();
+      for (const a of attempts) {
+        if (a.stepIndex === si && a.success) {
+          const midis = Array.isArray(a.midi) ? a.midi : [a.midi];
+          midis.forEach(m => successMidis.add(m));
+        }
+      }
+      const expArr = Array.from(expectedSet);
+      cn += expArr.filter(e => successMidis.has(e)).length;
+    }
+  }
+  correctNotes = cn;
+}
 ```
 
-**ANTES (bloco V2 return, ~linha 207):**
+V1 fallback unchanged (no `engineStats` needed, 1 attempt = 1 step).
+
+**3. `src/viewer/index.tsx`** (~line 937) — Pass engine stats to `computeTaskResult`
+
 ```ts
-  return {
-    version: "V2",
-    ...
-    correctSteps,
-    ...
-  } as TaskResultSummaryV2;
+const result = computeTaskResult(
+  attempts,
+  meta.totalSteps,
+  practiceMode === 'FILM' ? 'FILM' : 'WAIT',
+  meta.lessonId ?? undefined,
+  meta.chapterId ?? undefined,
+  version,
+  version === 'V2' ? {
+    completedSteps: engine.getCompletedSteps(),
+    totalExpectedNotes: engine.getTotalExpectedNotes(),
+  } : undefined
+);
 ```
 
-**DEPOIS:**
-```ts
-  const noteAccuracy = totalExpectedNotes && totalExpectedNotes > 0
-    ? correctNotes! / totalExpectedNotes
-    : undefined;
+**4. `src/viewer/types/task.ts`** — No structural change needed (fields already exist)
 
-  return {
-    version: "V2",
-    ...
-    correctSteps,
-    totalExpectedNotes,
-    correctNotes,
-    noteAccuracy,
-    ...
-  } as TaskResultSummaryV2;
-```
+The existing `totalExpectedNotes`, `correctNotes`, `noteAccuracy` fields stay. Their semantics just become correct.
 
----
+### What this fixes
 
-#### 2. `src/viewer/types/task.ts` (e `viewer/types/task.ts`)
+| Metric | Before (broken) | After (correct) |
+|--------|-----------------|-----------------|
+| `completedSteps` | Attempt aggregation (retries break it) | `engine.score` (ground truth) |
+| `totalExpectedNotes` | `attempts.length` (inflates with retries) | `sum(step.notes.length)` from lesson |
+| `correctNotes` | `attempts.filter(success).length` (inflates) | Unique expected notes satisfied per step |
+| `stepAccuracy` | Could be 0% even with completed steps | Always correct: completedSteps/totalSteps |
 
-**ANTES (TaskResultSummaryV2):**
-```ts
-  totalSteps: number;
-  correctSteps: number;
+### Risks
 
-  // Score
-  scoreBase: number;
-```
+- V1 unaffected (no `engineStats` passed, falls through to existing logic)
+- FILM mode: `logFilmAttempt` logs one attempt per step (not per note), so `correctSteps` from engine is still the right source. `totalExpectedNotes` from engine structure is also correct.
+- Existing tests should pass since V1 path is unchanged. V2 path gets more accurate, not less.
+- Endscreen UI unchanged (already shows "Steps Corretos" and "Acuracia (Notas)")
 
-**DEPOIS:**
-```ts
-  totalSteps: number;
-  correctSteps: number;
+### Validation checklist
 
-  // Note-level metrics (complementar)
-  totalExpectedNotes?: number;       // total de notas individuais nos attempts
-  correctNotes?: number;             // notas individuais acertadas
-  noteAccuracy?: number;             // correctNotes / totalExpectedNotes (0..1)
-
-  // Score
-  scoreBase: number;
-```
-
----
-
-#### 3. `src/viewer/components/Endscreen/EndscreenV2.tsx`
-
-**ANTES (summary section):**
-```tsx
-<div className="summary-row">
-  <span className="label">Respostas Corretas</span>
-  <span className="value">
-    {result.correctSteps} / {result.totalSteps}
-  </span>
-</div>
-<div className="summary-row">
-  <span className="label">Acurácia</span>
-  <span className="value percentage">{percentage}%</span>
-</div>
-```
-
-**DEPOIS:**
-```tsx
-<div className="summary-row">
-  <span className="label">Steps Corretos</span>
-  <span className="value">
-    {result.correctSteps} / {result.totalSteps}
-  </span>
-</div>
-<div className="summary-row">
-  <span className="label">Acurácia (Steps)</span>
-  <span className="value percentage">{percentage}%</span>
-</div>
-{result.noteAccuracy !== undefined && (
-  <div className="summary-row">
-    <span className="label">Acurácia (Notas)</span>
-    <span className="value percentage">{Math.round(result.noteAccuracy * 100)}%</span>
-  </div>
-)}
-```
-
----
-
-### Semantica da mudanca
-
-| Campo | Antes | Depois |
-|-------|-------|--------|
-| `correctSteps` (V2) | `attempts.filter(a => a.success).length` (note-level, podia ser 40 para 20 steps) | Agrupado por `stepIndex`, step so conta se TODAS suas notas deram success (max = totalSteps) |
-| `totalExpectedNotes` | nao existia | `attempts.length` (40 para 20 steps x 2 notas) |
-| `correctNotes` | nao existia | `attempts.filter(a => a.success).length` (note-level) |
-| `noteAccuracy` | nao existia | `correctNotes / totalExpectedNotes` (0..1) |
-| Endscreen headline | "Respostas Corretas" / "Acuracia" | "Steps Corretos" / "Acuracia (Steps)" + "Acuracia (Notas)" |
+- V2 WAIT: 20 steps × 2 notes → `totalExpectedNotes = 40`, `correctSteps ≤ 20`, `stepAccuracy ≤ 100%`
+- V2 WAIT with retries: step completed after miss → still counts as completed
+- V2 FILM: same correctness guarantees
+- V1: no regression
+- `noteAccuracy` reflects unique notes satisfied, not raw success count
 
