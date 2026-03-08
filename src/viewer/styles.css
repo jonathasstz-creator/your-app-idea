@@ -1,4 +1,3 @@
-
 :root {
   --bg-dark: #05070a;
   --glass: rgba(255, 255, 255, 0.03);
@@ -1338,7 +1337,6 @@ table {
 }
 
 /* --- HUD LAYER (Order: 1) --- */
-/* UI Contract: z-index 100, always on top, transparent background, doesn't block piano/sheet */
 .hud-layer {
   order: 1;
   flex: 0 0 auto;
@@ -1347,9 +1345,9 @@ table {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  z-index: 100; /* Highest layer: HUD > sheet > falling notes > keyboard */
+  z-index: 100;
   background: transparent;
-  pointer-events: none; /* Allows clicks to pass through to piano/sheet */
+  pointer-events: none;
 }
 
 .hud-glass {
@@ -1459,18 +1457,16 @@ table {
 }
 
 /* --- SHEET SECTION (Order: 2) --- */
-/* UI Contract: z-index 10, height clamp(220px, 38vh, 420px), white background, internal scroll */
 .sheet-section {
   order: 2;
   background: #ffffff !important;
   position: relative;
-  /* Deterministic height: controlled with clamp, internal scroll */
   height: clamp(220px, 38vh, 420px);
   flex: 0 0 auto;
-  min-height: 0; /* Critical: allows internal scroll to work */
-  overflow: hidden; /* External container doesn't scroll */
+  min-height: 0;
+  overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  z-index: 10; /* Sheet above piano roll, below HUD */
+  z-index: 10;
 }
 
 .sheet-section.is-hidden {
@@ -1514,13 +1510,9 @@ table {
 
 #osmd-container svg {
   display: block !important;
-  height: 85% !important; /* Slight padding inside the white area */
+  height: 85% !important;
   width: auto !important;
   max-width: none !important;
-}
-
-.sheet-viewport {
-  position: relative;
 }
 
 #osmd-container [id^="cursorImg-"],
@@ -1529,7 +1521,6 @@ table {
   z-index: 9999 !important;
   pointer-events: none !important;
   display: block !important;
-  /* Cursor do OSMD: não herdar regras globais de img responsiva */
   max-width: none !important;
   max-height: none !important;
   height: revert !important;
@@ -1537,18 +1528,15 @@ table {
 }
 
 /* --- PIANO ROLL (Order: 3) --- */
-/* UI Contract: z-index default (lowest), min-height 260px, flex: 1 1 0, black background */
-/* Contains: falling notes layer (rendered first) + keyboard layer (rendered last) */
 .piano-roll-section {
   order: 3;
-  flex: 1 1 0; /* Fills remaining space after HUD and sheet */
-  min-height: 260px; /* Guaranteed minimum for piano roll visibility (accommodates 120px keyboard + space) */
+  flex: 1 1 0;
+  min-height: 260px;
   position: relative;
   background: #000;
   border-top: 2px solid var(--primary-neon);
   overflow: hidden;
-  /* Deterministic: always has space, never disappears */
-  z-index: 1; /* Lowest layer: piano roll < sheet < HUD */
+  z-index: 1;
 }
 
 #piano-roll-canvas {
@@ -1577,7 +1565,7 @@ table {
     height: clamp(200px, 32vh, 340px);
   }
   .piano-roll-section {
-    min-height: 240px; /* Still guarantee piano roll visibility */
+    min-height: 240px;
   }
   .hud-glass {
     padding: 0.4rem 1rem;
@@ -1600,7 +1588,6 @@ table {
   font-variant-numeric: tabular-nums;
 }
 
-/* Score e Streak: discretos, não atrapalham layout */
 #hud-score, #hud-streak {
   font-size: 0.9rem;
   font-weight: 600;
@@ -1669,8 +1656,34 @@ table {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 .icon-btn svg { width: 16px; height: 16px; fill: #fff; }
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.icon-btn.active {
+  background: rgba(0, 242, 255, 0.15);
+  border-color: var(--primary-neon);
+  box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+}
+
+.icon-btn.active svg {
+  fill: var(--primary-neon);
+}
+
+#midi-btn.active {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+}
+
+#midi-btn.active svg {
+  fill: #22c55e;
+}
 
 .ws-dot-indicator {
   width: 7px;
@@ -1683,12 +1696,10 @@ table {
 
 /* --- TRANSITIONS AND ANIMATIONS --- */
 
-/* Transições suaves */
 .hud-item .value {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Animação de pulse */
 .hud-item .value.animate {
   animation: pulse 0.5s ease-out;
 }
@@ -1722,39 +1733,6 @@ table {
   color: var(--text-main);
 }
 
-/* Melhorar hover em botões */
-.icon-btn {
-  transition: all 0.2s ease;
-}
-
-.icon-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-1px);
-}
-
-/* Audio button active state (toggle on) */
-.icon-btn.active {
-  background: rgba(0, 242, 255, 0.15);
-  border-color: var(--primary-neon);
-  box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
-}
-
-.icon-btn.active svg {
-  fill: var(--primary-neon);
-}
-
-/* MIDI button active state (green when connected) */
-#midi-btn.active {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: #22c55e;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
-}
-
-#midi-btn.active svg {
-  fill: #22c55e;
-}
-
-/* Transições em status pills */
 .status-pill {
   transition: color 0.3s ease, text-shadow 0.3s ease;
 }
