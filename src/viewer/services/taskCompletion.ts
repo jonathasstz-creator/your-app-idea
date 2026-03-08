@@ -200,6 +200,10 @@ export function computeTaskResult(
   const perChord = hasChords ? computePerChordStatsV2(attempts) : [];
   const perNote = computePerNoteStatsV1(attempts);
 
+  const noteAccuracy = totalExpectedNotes && totalExpectedNotes > 0
+    ? correctNotes! / totalExpectedNotes
+    : undefined;
+
   return {
     version: "V2",
     mode,
@@ -207,6 +211,9 @@ export function computeTaskResult(
     chapterId,
     totalSteps,
     correctSteps,
+    totalExpectedNotes,
+    correctNotes,
+    noteAccuracy,
     scoreBase,
     timeBonus: 0, // TODO: implementar logic de time bonus
     totalScore: scoreBase, // = scoreBase + 0
