@@ -945,6 +945,82 @@ const init = async () => {
 
             console.log('[Endscreen] Dispatching result:', result);
             dispatchTaskCompletion(result);
+
+            // ── Fire-and-forget POST /v1/sessions/{id}/complete ──
+            // Endscreen is shown IMMEDIATELY below — this POST never blocks UI.
+            const completeSessionId = sessionCtx.id;
+            if (!completeSessionId) {
+                console.warn('[Complete] skipped: missing session id');
+            } else {
+                console.log('[Complete] preparing payload', { session_id: completeSessionId });
+                const responseTimes = attempts
+                    .filter((a: any) => a.responseMs !== undefined)
+                    .map((a: any) => a.responseMs as number);
+                const avgLatency = responseTimes.length > 0
+                    ? Math.round(responseTimes.reduce((a: number, b: number) => a + b, 0) / responseTimes.length)
+                    : 0;
+                const stdLatency = responseTimes.length > 1
+                    ? Math.round(Math.sqrt(responseTimes.reduce((sum: number, v: number) => sum + (v - avgLatency) ** 2, 0) / responseTimes.length))
+                    : 0;
+                const hits = attempts.filter((a: any) => a.success).length;
+                const misses = attempts.length - hits;
+                const pitchAccuracy = attempts.length > 0 ? +(hits / attempts.length).toFixed(4) : 0;
+                // timing_accuracy: ratio of responses within 200ms window
+                const timingHits = responseTimes.filter((ms: number) => ms <= 200).length;
+                const timingAccuracy = responseTimes.length > 0 ? +(timingHits / responseTimes.length).toFixed(4) : 0;
+
+                const completePayload = {
+                    completed_at: new Date().toISOString(),
+                    duration_ms: result.duration ?? 0,
+                    summary: {
+                        pitch_accuracy: pitchAccuracy,
+                        timing_accuracy: timingAccuracy,
+                        avg_latency_ms: avgLatency,
+                        std_latency_ms: stdLatency,
+                        hits,
+                        misses,
+                    },
+                    attempts_compact: attempts.map((a: any) => [
+                        a.stepIndex ?? 0,
+                        a.success ? 1 : 0,
+                        a.responseMs ?? 0,
+                    ]),
+                };
+
+                const token = getAuthTokenFromStorage();
+                if (!token) {
+                    console.warn('[Complete] skipped: no auth token available');
+                } else {
+                    const idempotencyKey = typeof crypto?.randomUUID === 'function'
+                        ? crypto.randomUUID()
+                        : `idem_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
+                    const apiBase = getConfig().apiBaseUrl || '';
+                    const completeUrl = `${apiBase}/v1/sessions/${completeSessionId}/complete`;
+
+                    console.log('[Complete] POST sent', { url: completeUrl, idempotencyKey });
+
+                    fetch(completeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                            'Idempotency-Key': idempotencyKey,
+                        },
+                        body: JSON.stringify(completePayload),
+                    })
+                    .then((resp) => {
+                        if (resp.ok) {
+                            console.log('[Complete] success', { status: resp.status });
+                        } else {
+                            console.warn('[Complete] failed', { status: resp.status });
+                        }
+                    })
+                    .catch((err) => {
+                        console.warn('[Complete] failed (network)', err?.message ?? err);
+                    });
+                }
+            }
+
             showEndscreen(result);
         });
     };
