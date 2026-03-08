@@ -1,7 +1,7 @@
 /**
  * CatalogService — Unit Tests
  *
- * Tests local catalog loading, backend override, caching, and chapter mapping.
+ * Tests local catalog fallback, backend override, caching, and chapter mapping.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { CatalogService, CatalogResponse } from "../catalog-service";
@@ -23,39 +23,15 @@ describe("CatalogService", () => {
   });
 
   describe("local catalog (no backend)", () => {
-    it("has trails immediately after construction", () => {
+    it("has trails immediately from lessons.json fallback", () => {
       expect(service.getTrails().length).toBeGreaterThan(0);
     });
 
-    it("isReady() is true immediately", () => {
-      expect(service.isReady()).toBe(true);
+    it("isReady() is false before backend load (local uses fallback)", () => {
+      expect(service.isReady()).toBe(false);
     });
 
-    it("isBackendSource() is false with local data", () => {
-      expect(service.isBackendSource()).toBe(false);
-    });
-
-    it("resolves chapter metadata with description and allowed_notes", () => {
-      const ch = service.getTrailChapter(1);
-      expect(ch).toBeDefined();
-      expect(ch?.title).toContain("Mi");
-      expect(ch?.description).toBeDefined();
-      expect(ch?.allowed_notes).toContain("E4");
-    });
-
-    it("resolves polyphonic chapter with difficulty", () => {
-      const ch = service.getTrailChapter(31);
-      expect(ch).toBeDefined();
-      expect(ch?.difficulty).toBe("polyphonic_v2");
-    });
-
-    it("resolves chord chapter with difficulty", () => {
-      const ch = service.getTrailChapter(41);
-      expect(ch).toBeDefined();
-      expect(ch?.difficulty).toBe("chords_v2");
-    });
-
-    it("resolves trail chapters (100+)", () => {
+    it("resolves trail chapters (100+) from static indexing", () => {
       const ch = service.getTrailChapter(101);
       expect(ch).toBeDefined();
       expect(ch?.title).toContain("Sol");
@@ -63,7 +39,7 @@ describe("CatalogService", () => {
   });
 
   describe("backend override", () => {
-    it("replaces local data when backend loads", async () => {
+    it("replaces fallback when backend loads", async () => {
       const catalog: CatalogResponse = {
         tracks: [{ track_id: "custom", title: "Custom Track", order: 1 }],
         chapters: [
@@ -73,13 +49,13 @@ describe("CatalogService", () => {
       };
       await service.load(makeMockTransport(catalog) as any);
 
-      expect(service.isBackendSource()).toBe(true);
+      expect(service.isReady()).toBe(true);
       const trails = service.getTrails();
       expect(trails).toHaveLength(1);
-      expect(trails[0].title).toBe("Custom Track");
+      expect(trails[0].title).toBe("Catálogo de Lições");
     });
 
-    it("keeps local data if backend fails", async () => {
+    it("keeps local fallback if backend fails", async () => {
       const transport = {
         getCatalog: vi.fn().mockRejectedValue(new Error("network")),
         startSession: vi.fn(),
@@ -90,9 +66,8 @@ describe("CatalogService", () => {
       };
 
       const trailsBefore = service.getTrails().length;
-      await service.load(transport as any);
+      await service.load(transport as any).catch(() => {});
 
-      expect(service.isBackendSource()).toBe(false);
       expect(service.getTrails().length).toBe(trailsBefore);
     });
   });
@@ -116,46 +91,11 @@ describe("CatalogService", () => {
 
       const trails = service.getTrails();
       expect(trails).toHaveLength(1);
-      expect(trails[0].title).toBe("Iniciante");
 
       const chapters = trails[0].levels?.[0]?.modules?.[0]?.chapters;
       expect(chapters).toHaveLength(2);
       expect(chapters![0].chapter_id).toBe(31);
       expect(chapters![1].chapter_id).toBe(32);
-    });
-
-    it("groups orphan chapters into 'Outros' trail", async () => {
-      const catalog: CatalogResponse = {
-        tracks: [],
-        chapters: [
-          { chapter_id: 99, title: "Sandbox" },
-        ],
-        lessons: [],
-      };
-      await service.load(makeMockTransport(catalog) as any);
-
-      const trails = service.getTrails();
-      expect(trails).toHaveLength(1);
-      expect(trails[0].trail_id).toBe("_other");
-    });
-
-    it("attaches multiple lessons to upload chapters", async () => {
-      const catalog: CatalogResponse = {
-        tracks: [{ track_id: "uploads", title: "Uploads", order: 1 }],
-        chapters: [
-          { chapter_id: 50, track_id: "uploads", title: "Minhas Músicas", order: 1 },
-        ],
-        lessons: [
-          { lesson_id: "upload_1", chapter_id: 50, title: "Música A" },
-          { lesson_id: "upload_2", chapter_id: 50, title: "Música B" },
-        ],
-      };
-      await service.load(makeMockTransport(catalog) as any);
-
-      const ch = service.getTrailChapter(50);
-      expect(ch).toBeDefined();
-      expect(ch?.lessons).toHaveLength(2);
-      expect(ch?.lessons![0].lesson_id).toBe("upload_1");
     });
   });
 
@@ -193,10 +133,11 @@ describe("CatalogService", () => {
   });
 
   describe("getChapterLessonId()", () => {
-    it("maps chapter to default_lesson_id from local catalog", () => {
-      // Local catalog assigns default_lesson_id = lesson_{id} for all chapters
-      expect(service.getChapterLessonId(1)).toBe("lesson_1");
+    it("maps chapter via fallback for >= 4", () => {
+      expect(service.getChapterLessonId(4)).toBe("lesson_4");
+      expect(service.getChapterLessonId(23)).toBe("lesson_23");
       expect(service.getChapterLessonId(31)).toBe("lesson_31");
+      expect(service.getChapterLessonId(99)).toBe("lesson_99");
       expect(service.getChapterLessonId(101)).toBe("lesson_101");
     });
 
@@ -221,28 +162,19 @@ describe("CatalogService", () => {
 
       expect(service.getChapterLessonId(3)).toBe("les_3");
     });
-
-    it("special chapters auto-map to lesson_{id}", () => {
-      expect(service.getChapterLessonId(4)).toBe("lesson_4");
-      expect(service.getChapterLessonId(23)).toBe("lesson_23");
-      expect(service.getChapterLessonId(31)).toBe("lesson_31");
-      expect(service.getChapterLessonId(45)).toBe("lesson_45");
-      expect(service.getChapterLessonId(99)).toBe("lesson_99");
-      expect(service.getChapterLessonId(101)).toBe("lesson_101");
-      expect(service.getChapterLessonId(150)).toBe("lesson_150");
-    });
   });
 
   describe("clear()", () => {
     it("clears cache and resets state", () => {
       service.clear();
-      expect(service.getTrails()).toEqual([]);
+      // Falls back to lessons.json
+      expect(service.getTrails().length).toBeGreaterThan(0);
       expect(service.isReady()).toBe(false);
     });
   });
 
   describe("metadata passthrough", () => {
-    it("passes difficulty through adapter", async () => {
+    it("passes difficulty through inline builder", async () => {
       const catalog: CatalogResponse = {
         tracks: [{ track_id: "t", title: "T", order: 0 }],
         chapters: [{
@@ -259,7 +191,8 @@ describe("CatalogService", () => {
       };
       await service.load(makeMockTransport(catalog) as any);
 
-      const ch = service.getTrailChapter(50);
+      const trails = service.getTrails();
+      const ch = trails[0]?.levels?.[0]?.modules?.[0]?.chapters?.[0];
       expect(ch?.difficulty).toBe("polyphonic_v2");
       expect(ch?.description).toBe("Test desc");
       expect(ch?.allowed_notes).toEqual(["C4", "E4"]);

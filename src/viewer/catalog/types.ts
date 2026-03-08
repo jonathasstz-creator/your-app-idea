@@ -31,6 +31,8 @@ export interface TrailChapter {
   coming_soon?: boolean;
 }
 
+export type HandAssignment = 'right' | 'left' | 'both' | 'alternate';
+
 export interface TrailModule {
   module_id?: number | string;
   title?: string;
