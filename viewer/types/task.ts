@@ -118,9 +118,14 @@ export interface TaskResultSummaryV2 {
   lessonId?: string;
   chapterId?: number;
 
-  // Contagem
+  // Contagem (step-level — unidade pedagógica)
   totalSteps: number;                // passos/acordes
-  correctSteps: number;              // acordes corretos
+  correctSteps: number;              // steps fully completed (all notes hit)
+
+  // Note-level metrics (complementar)
+  totalExpectedNotes?: number;       // total de notas individuais nos attempts
+  correctNotes?: number;             // notas individuais acertadas
+  noteAccuracy?: number;             // correctNotes / totalExpectedNotes (0..1)
 
   // Score
   scoreBase: number;                 // correctSteps * 100
