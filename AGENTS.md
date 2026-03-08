@@ -440,9 +440,10 @@ featureFlags.init(remoteProvider?)
 - ✅ Catálogo local funcional via `assets/lessons.json` → adapter → `Trail[]`
 - ✅ Auth non-blocking — app funciona sem sessão
 - ✅ `CatalogService` com `getTrails()`, `getTrailChapter()`, `getChapterLessonId()`
-- ✅ `TrailNavigator` renderizando capítulos com metadados
+- ✅ `TrailNavigator` reescrito com UI rica: level tabs, módulos acordeão, card recomendado, badges de mão, progresso
 - ✅ `useLessons()` hook consumindo pipeline local
 - ✅ `LessonsHubPage` exibindo catálogo real
+- ✅ Design system CSS consolidado em `src/viewer/styles.css` (neon glassmorphism, variáveis CSS, responsivo)
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.
@@ -453,4 +454,4 @@ featureFlags.init(remoteProvider?)
 - **Cobertura de testes:** `index.tsx` (2800 linhas, o orquestrador principal) não tem cobertura direta de testes.
 - **`beat-to-x-mapping.ts`:** Testes cobrem `interpolateBeatToX` (pura) mas não funções dependentes de OSMD/DOM.
 - **Navegação completa:** Clicar em capítulo no LessonsHubPage ainda não redireciona para `/practice/:lessonId`.
-- **Metadados visuais:** `description`, `badge`, `difficulty`, `hand` estão nos dados mas nem todos são exibidos na UI.
+- **statsIndex do TrailNavigator:** Stub vazio — precisa ser conectado a dados reais de progresso (localStorage ou backend).

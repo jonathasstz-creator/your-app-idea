@@ -1,5 +1,30 @@
 # Changelog
 
+## [2026-03-08] - Design system CSS + TrailNavigator UI rica
+
+### Resumo
+Consolidado o design system visual em `src/viewer/styles.css` com variáveis CSS (neon glassmorphism), estilos responsivos para todas as seções (HUD, sheet, piano roll, dashboard, home, auth, capítulos). Reescrito o `TrailNavigator` de placeholder básico para componente completo com level tabs, módulos acordeão animados (framer-motion), cards de capítulo com badges/progresso, card "Recomendado" e hand badges. Atualizado `AGENTS.md` para refletir estado atual.
+
+### Alterado
+- **`src/viewer/styles.css`**: Reescrito completo com design system neon/glassmorphism. Variáveis CSS (`--primary-neon`, `--glass`, `--bg-dark`, etc.), estilos para auth overlay, navbar, HUD layer (z-index 100), sheet section (z-index 10), piano roll, dashboard (KPI grid, heatmap, charts), home page, chapter overlay/cards, responsividade (720px, 600px, 900px breakpoints).
+- **`src/viewer/components/TrailNavigator.tsx`**: Reescrito de ~50 linhas placeholder para ~436 linhas com:
+  - `ChapterCard`: badges (locked/complete/coming_soon), hand assignment, progress bar, allowed notes count
+  - `ModuleAccordion`: seções colapsáveis com framer-motion (AnimatePresence)
+  - `RecommendedCard`: destaque "Comece aqui" / "Continue de onde parou"
+  - Level tabs: filtragem por `TrailLevel`
+  - `HandBadge`: indicador visual de mão (direita/esquerda/ambas/alternada)
+  - Keyboard support (Escape para fechar)
+  - `StatsIndex` stub preparado para dados reais de progresso
+- **`AGENTS.md`**: Atualizado com descrição do TrailNavigator rico, design system consolidado, pendências atualizadas.
+
+### Arquivos Modificados
+- `src/viewer/styles.css`
+- `src/viewer/components/TrailNavigator.tsx`
+- `AGENTS.md`
+- `CHANGELOG.md`
+
+---
+
 ## [2026-03-04] - Fix P0: Bootstrap pós-login não disparava no cold start + badges de status separados
 
 ### Resumo
