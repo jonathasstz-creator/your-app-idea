@@ -1,18 +1,21 @@
 /**
  * Catalog Service
  *
- * Centralized catalog management with caching to prevent duplicate HTTP requests.
- * Handles both REST and WebSocket transport modes.
+ * Centralized catalog management with caching.
  *
- * IMPORTANT: The navigation (TrailNavigator) is powered by the BACKEND catalog.
- * `assets/lessons.json` is NO LONGER used as the primary source for navigation.
- * The adapter in `catalog/adapter.ts` converts the flat backend response into
- * the hierarchical Trail[] structure expected by the UI.
+ * Data flow:
+ *   1. If a transport (backend) is available: load from API → CatalogResponse
+ *   2. Otherwise: use local catalog built from assets/lessons.json
+ *   3. CatalogResponse → adaptCatalogToTrails() → Trail[] for TrailNavigator
+ *
+ * The backend is the preferred source of truth when available.
+ * The local catalog serves as an offline fallback using the same pipeline.
  */
 
 import type { ITransport } from './transport/factory';
 import type { Trail, TrailChapter } from './catalog/types';
-import { adaptCatalogToTrails } from './catalog/adapter';
+import { adaptCatalogToTrails, type BackendCatalogPayload } from './catalog/adapter';
+import { buildLocalCatalog } from './catalog/local-catalog';
 
 export interface CatalogResponse {
     api_version?: string;
@@ -25,6 +28,14 @@ export interface CatalogResponse {
         subtitle?: string;
         order?: number;
         status?: string;
+        difficulty?: string;
+        description?: string;
+        allowed_notes?: string[];
+        hand?: string;
+        skill_tags?: string[];
+        badge?: string;
+        prerequisites?: number[];
+        coming_soon?: boolean;
         lessons?: Array<{ lesson_id: string; title?: string; order?: number }>;
     }>;
     lessons?: Array<{
@@ -41,67 +52,92 @@ export class CatalogService {
     private loadPromise: Promise<CatalogResponse> | null = null;
     private chapterToLessonMap = new Map<number, string>();
 
-    // Trail data derived from backend catalog (NOT from static lessons.json)
-    private backendTrails: Trail[] = [];
+    // Trail data derived from catalog (backend or local)
+    private derivedTrails: Trail[] = [];
     private trailChapterById = new Map<number, TrailChapter>();
 
-    /**
-     * Returns all trails derived from the backend catalog.
-     * Falls back to empty array if catalog hasn't been loaded yet.
-     *
-     * NOTE: This NO LONGER reads from assets/lessons.json.
-     * The backend is the single source of truth for navigation.
-     */
-    getTrails(): Trail[] {
-        if (this.backendTrails.length === 0 && !this.catalog) {
-            console.warn('[CatalogService] ⚠️ getTrails() called before catalog loaded — returning empty');
-        }
-        return this.backendTrails;
+    // Whether the current catalog came from backend (true) or local fallback (false)
+    private sourceIsBackend: boolean = false;
+
+    constructor() {
+        // Pre-load local catalog so getTrails() works immediately without backend
+        this.loadLocalCatalog();
     }
 
-    /** Returns trail chapter metadata by ID (from backend catalog) */
+    /**
+     * Load catalog from local lessons.json via the normalized pipeline.
+     * This gives immediate data without any network request.
+     */
+    private loadLocalCatalog(): void {
+        const localCatalog = buildLocalCatalog();
+        this.catalog = localCatalog as CatalogResponse;
+        this.buildChapterLessonMap(this.catalog);
+        this.buildTrailsFromCatalog(localCatalog);
+        this.sourceIsBackend = false;
+        console.log('[CatalogService] Loaded local catalog from lessons.json', {
+            tracks: localCatalog.tracks?.length ?? 0,
+            chapters: localCatalog.chapters?.length ?? 0,
+            trails: this.derivedTrails.length,
+        });
+    }
+
+    /**
+     * Returns all trails derived from the catalog.
+     * Works immediately with local data; updated when backend loads.
+     */
+    getTrails(): Trail[] {
+        return this.derivedTrails;
+    }
+
+    /** Returns trail chapter metadata by ID */
     getTrailChapter(chapterId: number): TrailChapter | undefined {
         return this.trailChapterById.get(chapterId);
     }
 
+    /** Whether the current catalog was loaded from a remote backend */
+    isBackendSource(): boolean {
+        return this.sourceIsBackend;
+    }
+
     /**
-     * Load catalog from transport (with caching)
-     * After loading, automatically builds the Trail[] hierarchy from backend data.
+     * Load catalog from transport (backend). Replaces local data on success.
+     * On failure, local catalog remains active.
      */
     async load(transport: ITransport): Promise<CatalogResponse> {
-        // Return cached catalog if available
-        if (this.catalog) {
-            console.log('[CatalogService] Using cached catalog');
+        // If already loaded from backend, return cached
+        if (this.catalog && this.sourceIsBackend) {
+            console.log('[CatalogService] Using cached backend catalog');
             return this.catalog;
         }
 
-        // Return in-flight promise if already loading
+        // Deduplicate in-flight requests
         if (this.loading && this.loadPromise) {
             console.log('[CatalogService] Reusing in-flight catalog request');
             return this.loadPromise;
         }
 
-        // Start new load
         this.loading = true;
         console.log('[CatalogService] Loading catalog from transport...');
 
         this.loadPromise = transport.getCatalog()
             .then(catalog => {
                 this.catalog = catalog;
+                this.sourceIsBackend = true;
                 this.buildChapterLessonMap(catalog);
-                this.buildTrailsFromBackend(catalog);
-                console.log('[CatalogService] ✅ Catalog loaded successfully', {
+                this.buildTrailsFromCatalog(catalog as BackendCatalogPayload);
+                console.log('[CatalogService] ✅ Backend catalog loaded', {
                     tracks: catalog.tracks?.length ?? 0,
                     chapters: catalog.chapters?.length ?? 0,
                     lessons: catalog.lessons?.length ?? 0,
                     mappings: this.chapterToLessonMap.size,
-                    trails: this.backendTrails.length,
+                    trails: this.derivedTrails.length,
                 });
                 return catalog;
             })
             .catch(error => {
-                console.error('[CatalogService] ❌ Failed to load catalog:', error);
-                throw error;
+                console.warn('[CatalogService] ⚠️ Backend load failed, keeping local catalog:', error);
+                // Local catalog remains active — no throw needed for UI
+                return this.catalog!;
             })
             .finally(() => {
                 this.loading = false;
@@ -110,23 +146,16 @@ export class CatalogService {
         return this.loadPromise;
     }
 
-    /**
-     * Get cached catalog (returns null if not loaded)
-     */
+    /** Get cached catalog (never null after construction) */
     getCatalog(): CatalogResponse | null {
         return this.catalog;
     }
 
-    /**
-     * Check if catalog is loaded and ready
-     */
+    /** Catalog is always ready (local data loads synchronously) */
     isReady(): boolean {
         return this.catalog !== null;
     }
 
-    /**
-     * Check if catalog is currently loading
-     */
     isLoading(): boolean {
         return this.loading;
     }
@@ -141,12 +170,12 @@ export class CatalogService {
         const lessonId = this.chapterToLessonMap.get(normalized);
         if (lessonId) return lessonId;
 
-        // Special chapters that resolve to lesson_{id} without backend catalog:
+        // Special chapters that resolve to lesson_{id} without catalog:
         //   4        — polyphonic intro
         //   23       — chord practice
         //   31-45    — polyphonic series
         //   99       — sandbox/test
-        //   100+     — trail chapters (from lessons.json)
+        //   100+     — trail chapters
         const isSpecialChapter =
             normalized === 4 ||
             normalized === 23 ||
@@ -159,28 +188,27 @@ export class CatalogService {
     }
 
     /**
-     * Clear cached catalog (useful for testing or forcing refresh)
+     * Clear cached catalog and reload local data
      */
     clear(): void {
         this.catalog = null;
         this.chapterToLessonMap.clear();
-        this.backendTrails = [];
+        this.derivedTrails = [];
         this.trailChapterById.clear();
         this.loading = false;
         this.loadPromise = null;
+        this.sourceIsBackend = false;
         console.log('[CatalogService] Cache cleared');
     }
 
     /**
-     * Build Trail[] hierarchy from backend catalog data.
-     * This is the ONLY source of truth for TrailNavigator.
+     * Build Trail[] hierarchy from catalog data (backend or local).
      */
-    private buildTrailsFromBackend(catalog: CatalogResponse): void {
-        this.backendTrails = adaptCatalogToTrails(catalog);
+    private buildTrailsFromCatalog(catalog: BackendCatalogPayload): void {
+        this.derivedTrails = adaptCatalogToTrails(catalog);
         this.trailChapterById.clear();
 
-        // Index all trail chapters for quick lookup
-        for (const trail of this.backendTrails) {
+        for (const trail of this.derivedTrails) {
             for (const level of trail.levels ?? []) {
                 for (const mod of level.modules ?? []) {
                     for (const ch of mod.chapters ?? []) {
@@ -189,11 +217,6 @@ export class CatalogService {
                 }
             }
         }
-
-        console.log('[CatalogService] Built trails from backend:', {
-            trails: this.backendTrails.length,
-            indexedChapters: this.trailChapterById.size,
-        });
     }
 
     /**
@@ -202,7 +225,6 @@ export class CatalogService {
     private buildChapterLessonMap(catalog: CatalogResponse): void {
         this.chapterToLessonMap.clear();
 
-        // First pass: use default_lesson_id from chapters
         if (Array.isArray(catalog.chapters)) {
             catalog.chapters.forEach(chapter => {
                 const chapterKey = this.normalizeChapterKey(chapter.chapter_id);
@@ -216,43 +238,26 @@ export class CatalogService {
             });
         }
 
-        // Second pass: fallback to lessons array for missing mappings
         if (Array.isArray(catalog.lessons)) {
             catalog.lessons.forEach(lesson => {
                 const chapterKey = this.normalizeChapterKey(lesson.chapter_id);
-
-                // Only set if not already mapped (chapters take priority)
                 if (chapterKey !== null && lesson.lesson_id && !this.chapterToLessonMap.has(chapterKey)) {
                     this.chapterToLessonMap.set(chapterKey, lesson.lesson_id);
                 }
             });
         }
-
-        console.log('[CatalogService] Built chapter→lesson mapping:',
-            Array.from(this.chapterToLessonMap.entries()).slice(0, 5));
     }
 
-    /**
-     * Normalize chapter ID to a consistent number format
-     */
     private normalizeChapterKey(value: unknown): number | null {
         if (value == null) return null;
-
         const text = String(value);
         const digits = text.replace(/\D/g, '');
-
         if (digits) {
             const numeric = Number(digits);
-            if (!Number.isNaN(numeric)) {
-                return numeric;
-            }
+            if (!Number.isNaN(numeric)) return numeric;
         }
-
         const fallback = Number(text);
-        if (!Number.isNaN(fallback)) {
-            return fallback;
-        }
-
+        if (!Number.isNaN(fallback)) return fallback;
         return null;
     }
 }
