@@ -324,9 +324,9 @@ featureFlags.init(remoteProvider?)
 6. **Testes obrigatórios** ao mudar `lesson-engine.ts`, `auth-storage.ts`, `analytics-client.ts`, `beat-to-x-mapping.ts`, `lesson-transposer.ts`, `catalog-service.ts`.
 7. **Nunca armazenar secrets em código.** Usar `public/config.json` para chaves públicas (anon key).
 8. **Imutabilidade:** `LessonTransposer.transpose()` retorna clone. Engine não muta input. Manter esse padrão.
-9. **Fire-and-forget:** POST `/complete` nunca deve bloquear a UI. Falhas são logadas, não lançadas.
+9. **Fire-and-forget:** POST `/v1/sessions/{id}/complete` nunca deve bloquear a UI. Falhas são logadas, não lançadas. Guard `completeSent` impede duplicidade.
 10. **Feature flags:** Novas features experimentais devem ser protegidas por flag em `src/viewer/feature-flags/types.ts`.
-11. **Sem backend:** Este projeto funciona 100% sem backend. Não criar endpoints fake, não depender de `/v1/*`. O catálogo vem de `assets/lessons.json`.
+11. **Backend opcional:** O catálogo funciona 100% offline via `assets/lessons.json`. O POST de conclusão de sessão é fire-and-forget — se o backend estiver indisponível, o endscreen aparece normalmente.
 12. **`viewer/` (raiz) é legado.** Sempre editar `src/viewer/`. Nunca editar `viewer/`.
 13. **`assets/lessons.json` é a fonte do currículo.** Não hardcodar currículo em componentes ou serviços. Usar o pipeline: `local-catalog → adapter → Trail[]`.
 
