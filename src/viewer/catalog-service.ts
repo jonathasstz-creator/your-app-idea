@@ -14,6 +14,7 @@ import lessonsJson from '../../assets/lessons.json';
 export interface CatalogTrack {
     track_id: string;
     title: string;
+    order?: number;
 }
 
 export interface CatalogChapter {
