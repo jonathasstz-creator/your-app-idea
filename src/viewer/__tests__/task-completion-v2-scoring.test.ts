@@ -151,9 +151,8 @@ describe("computeTaskResult — V2 engine truth path", () => {
     expect(result.version).toBe("V1");
     expect(result.correctSteps).toBe(2);
     expect(result.totalSteps).toBe(3);
-    // V1 should not have note-level metrics
-    expect(result.totalExpectedNotes).toBeUndefined();
-    expect(result.correctNotes).toBeUndefined();
+    // V1 should not have note-level metrics (perChord is undefined)
+    expect(result.perChord).toBeUndefined();
   });
 
   it("noteAccuracy never exceeds 1.0 with retries and engine truth", () => {

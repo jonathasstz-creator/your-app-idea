@@ -267,7 +267,9 @@ WebMidiService.onNoteOn(midi, velocity)
 Engine ended (setupEngineEndCallback em index.tsx)
   → sessionController.endLesson("COMPLETE")
   → engine.getAttemptLog() → attempts válidos
-  → computeTaskResult(attempts, totalSteps, mode)
+  → engine.getCompletedSteps() → completedSteps (V2 only)
+  → engine.getTotalExpectedNotes() → totalExpectedNotes (V2 only)
+  → computeTaskResult(attempts, totalSteps, mode, ..., engineStats)
   → dispatchTaskCompletion(result)
   → POST /v1/sessions/{session_id}/complete (fire-and-forget, inline em index.tsx)
     → Headers: Authorization: Bearer <token>, Idempotency-Key: crypto.randomUUID()
@@ -277,6 +279,16 @@ Engine ended (setupEngineEndCallback em index.tsx)
     → Falha de rede: log "[Complete] failed", NÃO bloqueia Endscreen
   → showEndscreen(result) — SEMPRE executa, independente do POST
 ```
+
+### 6.5.1 Scoring Contract (V2)
+- `AttemptLog` **não é** fonte de verdade para `correctSteps` em V2.
+- Em lições polifônicas, MISS + retry deixam histórico no log, mas o engine já sabe quantos steps foram completados.
+- Fonte de verdade:
+  - `engine.getCompletedSteps()` → `correctSteps` (incrementa exatamente 1x por step completado)
+  - `engine.getTotalExpectedNotes()` → `totalExpectedNotes` (derivado de `sum(step.notes.length)`)
+- `computeTaskResult()` usa `AttemptLog` apenas para derivar `correctNotes` contando notas esperadas únicas satisfeitas (sem inflar por retries/duplicatas).
+- Fallback legado sem `engineStats` permanece disponível para compatibilidade de testes.
+- Testes: `src/viewer/__tests__/task-completion-v2-scoring.test.ts`
 
 ### 6.6 Feature flags
 ```
