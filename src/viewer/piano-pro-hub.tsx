@@ -69,8 +69,8 @@ const Hub: React.FC<HubProps> = ({ onSelectActivity, onBack, catalogService }) =
     }
   }
 
-  function handleSelectChapter(chapterId: number) {
-    onSelectActivity({ type: 'chapter', chapterId });
+  function handleSelectChapter(chapterId: number, lessonId?: string) {
+    onSelectActivity({ type: 'chapter', chapterId, lessonId });
   }
 
   return (
