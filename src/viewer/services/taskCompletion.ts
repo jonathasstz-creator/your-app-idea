@@ -7,6 +7,21 @@
  * - Chamado por WAIT e FILM
  * - Zero backend, 100% front-end
  * - localStorage isolado (safe)
+ *
+ * ## V2 Scoring Contract
+ *
+ * AttemptLog is NOT the source of truth for completed steps in V2.
+ * In WAIT/FILM polyphonic flows, retries and misses remain in the log,
+ * but the engine score reflects the real number of completed steps.
+ *
+ * Therefore:
+ * - correctSteps comes from engine.getCompletedSteps()
+ * - totalExpectedNotes comes from engine.getTotalExpectedNotes()
+ * - correctNotes is derived per step counting unique expected midis satisfied
+ *   (no inflation from retries or duplicate successes)
+ *
+ * Attempt aggregation is used only as a legacy fallback when engineStats
+ * is unavailable.
  */
 
 import {
