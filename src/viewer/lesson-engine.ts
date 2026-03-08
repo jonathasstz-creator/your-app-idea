@@ -964,6 +964,14 @@ class LessonEngineV2 implements LessonEngineApi {
     this.onEndedCallback = callback;
   }
 
+  getCompletedSteps(): number {
+    return this.score;
+  }
+
+  getTotalExpectedNotes(): number {
+    return this.steps.reduce((sum, s) => sum + (s.notes?.length ?? 0), 0);
+  }
+
   private logAttempt(midi: number, expected: number, success: boolean) {
     const now = Date.now();
     const responseMs = this.stepStartTime > 0 ? now - this.stepStartTime : undefined;
