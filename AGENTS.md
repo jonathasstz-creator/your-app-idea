@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-03-08 — pós-migração do catálogo local e auth non-blocking.
+> **Última atualização:** 2026-03-08 — design system CSS consolidado + TrailNavigator reescrito com UI rica.
 
 ---
 
@@ -57,7 +57,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | `src/viewer/catalog/types.ts` | Tipos do catálogo: `Trail`, `TrailLevel`, `TrailModule`, `TrailChapter`, `HandAssignment`. |
 | `src/viewer/catalog/adapter.ts` | Adapter: converte catálogo local → `Trail[]` hierárquico. |
 | `src/viewer/catalog/local-catalog.ts` | Builder: lê `assets/lessons.json` e monta estrutura normalizada (`tracks[]`, `chapters[]`, `lessons[]`). |
-| `src/viewer/components/TrailNavigator.tsx` | Componente de navegação: renderiza capítulos agrupados por trilha/nível/módulo. |
+| `src/viewer/components/TrailNavigator.tsx` | Componente completo de navegação: overlay com level tabs, módulos acordeão (framer-motion), cards de capítulo com badges/progresso, card "Recomendado", hand badges. Usa classes CSS de `styles.css`. |
 | `src/viewer/lesson-engine.ts` | Motor de lição V1 (monofônico) e V2 (polifônico/acordes). WAIT + FILM modes. |
 | `src/viewer/lesson-pipeline.ts` | Parser + roteador automático V1/V2 baseado em heurística. |
 | `src/viewer/beat-to-x-mapping.ts` | Mapeia beat musical → posição X na tela (critical para falling notes + cursor). |
@@ -440,9 +440,10 @@ featureFlags.init(remoteProvider?)
 - ✅ Catálogo local funcional via `assets/lessons.json` → adapter → `Trail[]`
 - ✅ Auth non-blocking — app funciona sem sessão
 - ✅ `CatalogService` com `getTrails()`, `getTrailChapter()`, `getChapterLessonId()`
-- ✅ `TrailNavigator` renderizando capítulos com metadados
+- ✅ `TrailNavigator` reescrito com UI rica: level tabs, módulos acordeão, card recomendado, badges de mão, progresso
 - ✅ `useLessons()` hook consumindo pipeline local
 - ✅ `LessonsHubPage` exibindo catálogo real
+- ✅ Design system CSS consolidado em `src/viewer/styles.css` (neon glassmorphism, variáveis CSS, responsivo)
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.
@@ -453,4 +454,4 @@ featureFlags.init(remoteProvider?)
 - **Cobertura de testes:** `index.tsx` (2800 linhas, o orquestrador principal) não tem cobertura direta de testes.
 - **`beat-to-x-mapping.ts`:** Testes cobrem `interpolateBeatToX` (pura) mas não funções dependentes de OSMD/DOM.
 - **Navegação completa:** Clicar em capítulo no LessonsHubPage ainda não redireciona para `/practice/:lessonId`.
-- **Metadados visuais:** `description`, `badge`, `difficulty`, `hand` estão nos dados mas nem todos são exibidos na UI.
+- **statsIndex do TrailNavigator:** Stub vazio — precisa ser conectado a dados reais de progresso (localStorage ou backend).
