@@ -5,13 +5,13 @@
  * into the hierarchical Trail[] structure expected by TrailNavigator.
  *
  * Mapping rules:
- *   - Each backend `track` becomes a `Trail`
- *   - Each trail gets a single synthetic Level
- *   - Each level gets a single synthetic Module
+ *   - Each backend `track` becomes a `Trail` with a single Level + single Module
  *   - Chapters matching that track's `track_id` are placed inside the module
  *   - Chapters are ordered by their `order` field (then chapter_id as tiebreaker)
  *   - Chapters with multiple lessons (uploads) expose all lessons as sub-items
  *   - Chapters without a track_id go into an "Outros" catch-all trail
+ *   - Extended metadata (difficulty, description, allowed_notes, hand, etc.)
+ *     is passed through from BackendChapter to TrailChapter.
  */
 
 import type { Trail, TrailChapter, TrailModule, TrailLevel } from './types';
@@ -35,6 +35,15 @@ export interface BackendChapter {
     unlocked?: boolean;
     status?: string;
     lessons?: BackendLesson[];
+    // Extended navigation metadata
+    difficulty?: string;
+    description?: string;
+    allowed_notes?: string[];
+    hand?: string;
+    skill_tags?: string[];
+    badge?: string;
+    prerequisites?: number[];
+    coming_soon?: boolean;
 }
 
 /** Shape of a lesson coming from the backend /v1/catalog response */
@@ -69,8 +78,8 @@ export function adaptCatalogToTrails(catalog: BackendCatalogPayload): Trail[] {
     }
 
     // Convert backend chapters into TrailChapters, grouped by track_id
-    const chaptersByTrack = new Map<string, TrailChapter[]>();
-    const orphanChapters: TrailChapter[] = [];
+    const chaptersByTrack = new Map<string, { tc: TrailChapter; order: number }[]>();
+    const orphanChapters: { tc: TrailChapter; order: number }[] = [];
 
     for (const ch of chapters) {
         const chId = normalizeId(ch.chapter_id);
@@ -82,41 +91,40 @@ export function adaptCatalogToTrails(catalog: BackendCatalogPayload): Trail[] {
             subtitle: ch.subtitle,
             default_lesson_id: ch.default_lesson_id,
             status: ch.status,
-            lessons: lessonsByChapter.get(chId)?.map(l => ({
+            lessons: ch.lessons?.map(l => ({
+                lesson_id: l.lesson_id,
+                title: l.title,
+            })) ?? lessonsByChapter.get(chId)?.map(l => ({
                 lesson_id: l.lesson_id,
                 title: l.title,
             })),
+            // Pass through extended metadata
+            difficulty: ch.difficulty as TrailChapter['difficulty'],
+            description: ch.description,
+            allowed_notes: ch.allowed_notes,
+            hand: ch.hand as TrailChapter['hand'],
+            skill_tags: ch.skill_tags,
+            badge: ch.badge,
+            prerequisites: ch.prerequisites,
+            coming_soon: ch.coming_soon,
         };
 
+        const entry = { tc: trailChapter, order: ch.order ?? 0 };
         const trackKey = ch.track_id != null ? String(ch.track_id) : null;
         if (trackKey) {
             if (!chaptersByTrack.has(trackKey)) chaptersByTrack.set(trackKey, []);
-            chaptersByTrack.get(trackKey)!.push(trailChapter);
+            chaptersByTrack.get(trackKey)!.push(entry);
         } else {
-            orphanChapters.push(trailChapter);
+            orphanChapters.push(entry);
         }
     }
 
-    // Sort chapters within each track by order, then chapter_id
-    const sortChapters = (arr: TrailChapter[]) =>
+    // Sort helper
+    const sortEntries = (arr: { tc: TrailChapter; order: number }[]) =>
         arr.sort((a, b) => {
-            const orderA = (a as any)._order ?? 0;
-            const orderB = (b as any)._order ?? 0;
-            if (orderA !== orderB) return orderA - orderB;
-            return a.chapter_id - b.chapter_id;
+            if (a.order !== b.order) return a.order - b.order;
+            return a.tc.chapter_id - b.tc.chapter_id;
         });
-
-    // Store order temporarily for sorting
-    for (const ch of chapters) {
-        const chId = normalizeId(ch.chapter_id);
-        if (chId === null) continue;
-        // Find the TrailChapter and attach order for sorting
-        const allGroups = [...chaptersByTrack.values(), orphanChapters];
-        for (const group of allGroups) {
-            const found = group.find(tc => tc.chapter_id === chId);
-            if (found) (found as any)._order = ch.order ?? 0;
-        }
-    }
 
     // Build trails from tracks
     const sortedTracks = [...tracks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -124,16 +132,14 @@ export function adaptCatalogToTrails(catalog: BackendCatalogPayload): Trail[] {
 
     for (const track of sortedTracks) {
         const trackKey = String(track.track_id);
-        const trackChapters = chaptersByTrack.get(trackKey) ?? [];
-        if (trackChapters.length === 0) continue;
+        const entries = chaptersByTrack.get(trackKey) ?? [];
+        if (entries.length === 0) continue;
 
-        sortChapters(trackChapters);
-        // Clean up temp _order
-        trackChapters.forEach(tc => delete (tc as any)._order);
+        sortEntries(entries);
 
         const module: TrailModule = {
             title: track.title ?? `Track ${track.track_id}`,
-            chapters: trackChapters,
+            chapters: entries.map(e => e.tc),
         };
 
         const level: TrailLevel = {
@@ -150,8 +156,7 @@ export function adaptCatalogToTrails(catalog: BackendCatalogPayload): Trail[] {
 
     // Add orphan chapters as "Outros" trail if any exist
     if (orphanChapters.length > 0) {
-        sortChapters(orphanChapters);
-        orphanChapters.forEach(tc => delete (tc as any)._order);
+        sortEntries(orphanChapters);
 
         trails.push({
             trail_id: '_other',
@@ -160,7 +165,7 @@ export function adaptCatalogToTrails(catalog: BackendCatalogPayload): Trail[] {
                 title: 'Outros',
                 modules: [{
                     title: 'Capítulos',
-                    chapters: orphanChapters,
+                    chapters: orphanChapters.map(e => e.tc),
                 }],
             }],
         });
