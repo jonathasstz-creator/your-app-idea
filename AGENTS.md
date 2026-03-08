@@ -264,11 +264,18 @@ WebMidiService.onNoteOn(midi, velocity)
 
 ### 6.5 POST /complete (fire-and-forget)
 ```
-Engine ended
+Engine ended (setupEngineEndCallback em index.tsx)
+  → sessionController.endLesson("COMPLETE")
+  → engine.getAttemptLog() → attempts válidos
   → computeTaskResult(attempts, totalSteps, mode)
   → dispatchTaskCompletion(result)
-  → POST /complete (fire-and-forget)
-    → Falha de rede: log no console, NÃO bloqueia Endscreen
+  → POST /v1/sessions/{session_id}/complete (fire-and-forget, inline em index.tsx)
+    → Headers: Authorization: Bearer <token>, Idempotency-Key: crypto.randomUUID()
+    → Payload: { completed_at, duration_ms, summary: { pitch_accuracy, timing_accuracy, avg_latency_ms, std_latency_ms, hits, misses }, attempts_compact }
+    → Guard: `completeSent` flag impede envio duplicado na mesma sessão
+    → Guard: sem session_id ou sem token → skip com log
+    → Falha de rede: log "[Complete] failed", NÃO bloqueia Endscreen
+  → showEndscreen(result) — SEMPRE executa, independente do POST
 ```
 
 ### 6.6 Feature flags
