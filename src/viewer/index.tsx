@@ -2838,14 +2838,15 @@ const init = async () => {
 };
 
 const startApp = async () => {
+    // Auth is non-blocking: if it fails, the app still loads with
+    // local catalog and chapter navigation working. Only API calls
+    // that require auth (REST sessions, analytics) will fail gracefully.
     try {
         await ensureAuthenticated();
         console.log('[AUTH] ✅ autenticado, iniciando app');
     } catch (err) {
-        console.error('[AUTH] ❌ Falha ao autenticar', err);
-        const message = err instanceof Error ? err.message : String(err);
-        alert(`Não foi possível autenticar. ${message}`);
-        return;
+        console.warn('[AUTH] ⚠️ Auth não disponível, continuando sem autenticação:', err instanceof Error ? err.message : String(err));
+        console.info('[AUTH] Catálogo local e navegação de capítulos funcionam normalmente.');
     }
 
     try {
