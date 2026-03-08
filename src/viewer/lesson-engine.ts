@@ -69,6 +69,9 @@ export interface LessonEngineApi {
   getAttemptLog(): AttemptLog[];
   getLessonMeta(): { lessonId: string | null; chapterId: number | null; totalSteps: number };
   setOnEnded(callback: (() => void) | null): void;
+  // Scoring contract: engine-derived truth for V2 metrics
+  getCompletedSteps(): number;
+  getTotalExpectedNotes(): number;
 }
 
 export interface EngineLessonBase {
@@ -454,6 +457,14 @@ class LessonEngineV1 implements LessonEngineApi {
   setOnEnded(callback: (() => void) | null) {
     console.log(`[EngineV1] setOnEnded: ${callback ? 'callback provided' : 'null'}`);
     this.onEndedCallback = callback;
+  }
+
+  getCompletedSteps(): number {
+    return this.score;
+  }
+
+  getTotalExpectedNotes(): number {
+    return this.notes.length; // V1: 1 note per step
   }
 
   private logAttempt(midi: number, expected: number, success: boolean) {
@@ -951,6 +962,14 @@ class LessonEngineV2 implements LessonEngineApi {
   setOnEnded(callback: (() => void) | null) {
     console.log(`[EngineV2] setOnEnded: ${callback ? 'callback provided' : 'null'}`);
     this.onEndedCallback = callback;
+  }
+
+  getCompletedSteps(): number {
+    return this.score;
+  }
+
+  getTotalExpectedNotes(): number {
+    return this.steps.reduce((sum, s) => sum + (s.notes?.length ?? 0), 0);
   }
 
   private logAttempt(midi: number, expected: number, success: boolean) {

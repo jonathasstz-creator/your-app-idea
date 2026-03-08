@@ -40,41 +40,64 @@ export function computeTaskResult(
   mode: TaskMode,
   lessonId?: string,
   chapterId?: number,
-  version: "V1" | "V2" = "V1"
+  version: "V1" | "V2" = "V1",
+  engineStats?: { completedSteps: number; totalExpectedNotes: number }
 ): TaskResultSummary {
   // ── Derive correctSteps at the RIGHT granularity ──
-  // V1: 1 attempt = 1 step (note-level == step-level), so counting successes works.
-  // V2: 1 step can have N notes, each logged individually. A step is "correct"
-  //     only when ALL its notes were hit. We derive this from unique stepIndex
-  //     values where the engine advanced (onStepComplete('HIT')).
-  //     The engine logs each note individually with success=true, then advances
-  //     the step. So a completed step has ALL its note attempts marked success
-  //     for that stepIndex.
+  // V2 with engineStats: use engine truth (score = completed steps, structure = expected notes)
+  // V2 without engineStats: fallback to attempt aggregation (legacy/test compat)
+  // V1: 1 attempt = 1 step, counting successes works
   let correctSteps: number;
   let totalExpectedNotes: number | undefined;
   let correctNotes: number | undefined;
 
-  if (version === "V2") {
-    // Group attempts by stepIndex to determine step-level completion
+  if (version === "V2" && engineStats) {
+    // ── ENGINE TRUTH PATH (preferred) ──
+    correctSteps = engineStats.completedSteps;
+    totalExpectedNotes = engineStats.totalExpectedNotes;
+
+    // correctNotes: for completed steps, ALL expected notes were satisfied by definition
+    // (engine only advances when chordNotes.every(m => stepState.has(m))).
+    // For incomplete/partial steps, count unique expected midis with at least one success.
+    const stepExpected = new Map<number, Set<number>>();
+    for (const a of attempts) {
+      if (!stepExpected.has(a.stepIndex)) stepExpected.set(a.stepIndex, new Set());
+      const expected = Array.isArray(a.expected) ? a.expected : [a.expected];
+      expected.forEach(e => stepExpected.get(a.stepIndex)!.add(e));
+    }
+
+    let cn = 0;
+    for (const [si, expectedSet] of stepExpected) {
+      if (si < correctSteps) {
+        // Completed step: all expected notes are correct by engine invariant
+        cn += expectedSet.size;
+      } else {
+        // Partial/incomplete step: count unique expected midis with success
+        const successMidis = new Set<number>();
+        for (const a of attempts) {
+          if (a.stepIndex === si && a.success) {
+            const midis = Array.isArray(a.midi) ? a.midi : [a.midi];
+            midis.forEach(m => successMidis.add(m));
+          }
+        }
+        cn += Array.from(expectedSet).filter(e => successMidis.has(e)).length;
+      }
+    }
+    correctNotes = cn;
+  } else if (version === "V2") {
+    // ── FALLBACK PATH (no engineStats, legacy compat) ──
     const stepMap = new Map<number, { successes: number; total: number }>();
     for (const a of attempts) {
-      if (!stepMap.has(a.stepIndex)) {
-        stepMap.set(a.stepIndex, { successes: 0, total: 0 });
-      }
+      if (!stepMap.has(a.stepIndex)) stepMap.set(a.stepIndex, { successes: 0, total: 0 });
       const entry = stepMap.get(a.stepIndex)!;
       entry.total++;
       if (a.success) entry.successes++;
     }
-    // A step counts as correct only if it has at least one success AND no failures
-    // (the engine resets stepState on MISS, so a completed step has only successes)
     correctSteps = 0;
     for (const [, entry] of stepMap) {
       const hasFail = entry.total > entry.successes;
-      if (entry.successes > 0 && !hasFail) {
-        correctSteps++;
-      }
+      if (entry.successes > 0 && !hasFail) correctSteps++;
     }
-    // Note-level metrics
     totalExpectedNotes = attempts.length;
     correctNotes = attempts.filter((a) => a.success).length;
   } else {

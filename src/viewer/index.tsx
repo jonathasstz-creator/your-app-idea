@@ -940,7 +940,11 @@ const init = async () => {
                 practiceMode === 'FILM' ? 'FILM' : 'WAIT',
                 meta.lessonId ?? undefined,
                 meta.chapterId ?? undefined,
-                version // PR3: V2 for FILM, V1 for WAIT
+                version,
+                version === 'V2' ? {
+                    completedSteps: engine.getCompletedSteps(),
+                    totalExpectedNotes: engine.getTotalExpectedNotes(),
+                } : undefined
             );
 
             console.log('[Endscreen] Dispatching result:', result);
