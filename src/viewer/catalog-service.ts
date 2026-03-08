@@ -37,6 +37,8 @@ export interface CatalogResponse {
     lessons?: Array<{
         lesson_id: string;
         chapter_id?: number | string;
+        title?: string;
+        order?: number;
     }>;
 }
 
