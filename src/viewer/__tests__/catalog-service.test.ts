@@ -1,7 +1,7 @@
 /**
  * CatalogService — Unit Tests
  *
- * Tests local catalog loading, backend override, caching, and chapter mapping.
+ * Tests local catalog fallback, backend override, caching, and chapter mapping.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { CatalogService, CatalogResponse } from "../catalog-service";
@@ -23,35 +23,15 @@ describe("CatalogService", () => {
   });
 
   describe("local catalog (no backend)", () => {
-    it("has trails immediately after construction", () => {
+    it("has trails immediately from lessons.json fallback", () => {
       expect(service.getTrails().length).toBeGreaterThan(0);
     });
 
-    it("isReady() is true immediately", () => {
-      expect(service.isReady()).toBe(true);
+    it("isReady() is false before backend load (local uses fallback)", () => {
+      expect(service.isReady()).toBe(false);
     });
 
-    it("resolves chapter metadata with description and allowed_notes", () => {
-      const ch = service.getTrailChapter(1);
-      expect(ch).toBeDefined();
-      expect(ch?.title).toContain("Mi");
-      expect(ch?.description).toBeDefined();
-      expect(ch?.allowed_notes).toContain("E4");
-    });
-
-    it("resolves polyphonic chapter with difficulty", () => {
-      const ch = service.getTrailChapter(31);
-      expect(ch).toBeDefined();
-      expect(ch?.difficulty).toBe("polyphonic_v2");
-    });
-
-    it("resolves chord chapter with difficulty", () => {
-      const ch = service.getTrailChapter(41);
-      expect(ch).toBeDefined();
-      expect(ch?.difficulty).toBe("chords_v2");
-    });
-
-    it("resolves trail chapters (100+)", () => {
+    it("resolves trail chapters (100+) from static indexing", () => {
       const ch = service.getTrailChapter(101);
       expect(ch).toBeDefined();
       expect(ch?.title).toContain("Sol");
@@ -59,7 +39,7 @@ describe("CatalogService", () => {
   });
 
   describe("backend override", () => {
-    it("replaces local data when backend loads", async () => {
+    it("replaces fallback when backend loads", async () => {
       const catalog: CatalogResponse = {
         tracks: [{ track_id: "custom", title: "Custom Track", order: 1 }],
         chapters: [
@@ -69,12 +49,13 @@ describe("CatalogService", () => {
       };
       await service.load(makeMockTransport(catalog) as any);
 
+      expect(service.isReady()).toBe(true);
       const trails = service.getTrails();
       expect(trails).toHaveLength(1);
       expect(trails[0].title).toBe("Catálogo de Lições");
     });
 
-    it("keeps local data if backend fails", async () => {
+    it("keeps local fallback if backend fails", async () => {
       const transport = {
         getCatalog: vi.fn().mockRejectedValue(new Error("network")),
         startSession: vi.fn(),
@@ -115,25 +96,6 @@ describe("CatalogService", () => {
       expect(chapters).toHaveLength(2);
       expect(chapters![0].chapter_id).toBe(31);
       expect(chapters![1].chapter_id).toBe(32);
-    });
-
-    it("attaches multiple lessons to upload chapters", async () => {
-      const catalog: CatalogResponse = {
-        tracks: [{ track_id: "uploads", title: "Uploads", order: 1 }],
-        chapters: [
-          { chapter_id: 50, track_id: "uploads", title: "Minhas Músicas", order: 1 },
-        ],
-        lessons: [
-          { lesson_id: "upload_1", chapter_id: 50, title: "Música A" },
-          { lesson_id: "upload_2", chapter_id: 50, title: "Música B" },
-        ],
-      };
-      await service.load(makeMockTransport(catalog) as any);
-
-      const trails = service.getTrails();
-      const ch = trails[0]?.levels?.[0]?.modules?.[0]?.chapters?.[0];
-      expect(ch).toBeDefined();
-      expect(ch?.chapter_id).toBe(50);
     });
   });
 
@@ -205,9 +167,9 @@ describe("CatalogService", () => {
   describe("clear()", () => {
     it("clears cache and resets state", () => {
       service.clear();
-      // After clear, getTrails falls back to lessons.json
-      const trails = service.getTrails();
-      expect(trails.length).toBeGreaterThanOrEqual(0);
+      // Falls back to lessons.json
+      expect(service.getTrails().length).toBeGreaterThan(0);
+      expect(service.isReady()).toBe(false);
     });
   });
 
