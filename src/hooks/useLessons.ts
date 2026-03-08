@@ -1,18 +1,17 @@
-import { useEffect, useState } from 'react';
-import { lessonsService } from '../services/lessons.service';
-import { Lesson, Module } from '../types/lesson.types';
+import { useMemo } from 'react';
+import { buildLocalCatalog } from '../viewer/catalog/local-catalog';
+import { adaptCatalogToTrails } from '../viewer/catalog/adapter';
+import type { Trail } from '../viewer/catalog/types';
 
+/**
+ * Hook that returns the full Trail[] hierarchy derived from assets/lessons.json
+ * via the catalog adapter pipeline (same shape the backend would produce).
+ */
 export function useLessons() {
-  const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    lessonsService.listModules().then(setModules).finally(() => setLoading(false));
+  const trails = useMemo<Trail[]>(() => {
+    const catalog = buildLocalCatalog();
+    return adaptCatalogToTrails(catalog);
   }, []);
 
-  const findLesson = (lessonId: string): Lesson | undefined =>
-    modules.flatMap((m) => m.chapters).flatMap((c) => c.lessons).find((l) => l.id === lessonId);
-
-  return { modules, loading, findLesson };
+  return { trails, loading: false };
 }
