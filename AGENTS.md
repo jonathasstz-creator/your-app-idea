@@ -57,7 +57,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | `src/viewer/catalog/types.ts` | Tipos do catálogo: `Trail`, `TrailLevel`, `TrailModule`, `TrailChapter`, `HandAssignment`. |
 | `src/viewer/catalog/adapter.ts` | Adapter: converte catálogo local → `Trail[]` hierárquico. |
 | `src/viewer/catalog/local-catalog.ts` | Builder: lê `assets/lessons.json` e monta estrutura normalizada (`tracks[]`, `chapters[]`, `lessons[]`). |
-| `src/viewer/components/TrailNavigator.tsx` | Componente de navegação: renderiza capítulos agrupados por trilha/nível/módulo. |
+| `src/viewer/components/TrailNavigator.tsx` | Componente completo de navegação: overlay com level tabs, módulos acordeão (framer-motion), cards de capítulo com badges/progresso, card "Recomendado", hand badges. Usa classes CSS de `styles.css`. |
 | `src/viewer/lesson-engine.ts` | Motor de lição V1 (monofônico) e V2 (polifônico/acordes). WAIT + FILM modes. |
 | `src/viewer/lesson-pipeline.ts` | Parser + roteador automático V1/V2 baseado em heurística. |
 | `src/viewer/beat-to-x-mapping.ts` | Mapeia beat musical → posição X na tela (critical para falling notes + cursor). |
