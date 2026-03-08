@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-03-08 — design system CSS consolidado + TrailNavigator reescrito com UI rica.
+> **Última atualização:** 2026-03-08 — POST /v1/sessions/{id}/complete fire-and-forget implementado no write path.
 
 ---
 
@@ -264,11 +264,18 @@ WebMidiService.onNoteOn(midi, velocity)
 
 ### 6.5 POST /complete (fire-and-forget)
 ```
-Engine ended
+Engine ended (setupEngineEndCallback em index.tsx)
+  → sessionController.endLesson("COMPLETE")
+  → engine.getAttemptLog() → attempts válidos
   → computeTaskResult(attempts, totalSteps, mode)
   → dispatchTaskCompletion(result)
-  → POST /complete (fire-and-forget)
-    → Falha de rede: log no console, NÃO bloqueia Endscreen
+  → POST /v1/sessions/{session_id}/complete (fire-and-forget, inline em index.tsx)
+    → Headers: Authorization: Bearer <token>, Idempotency-Key: crypto.randomUUID()
+    → Payload: { completed_at, duration_ms, summary: { pitch_accuracy, timing_accuracy, avg_latency_ms, std_latency_ms, hits, misses }, attempts_compact }
+    → Guard: `completeSent` flag impede envio duplicado na mesma sessão
+    → Guard: sem session_id ou sem token → skip com log
+    → Falha de rede: log "[Complete] failed", NÃO bloqueia Endscreen
+  → showEndscreen(result) — SEMPRE executa, independente do POST
 ```
 
 ### 6.6 Feature flags
@@ -317,9 +324,9 @@ featureFlags.init(remoteProvider?)
 6. **Testes obrigatórios** ao mudar `lesson-engine.ts`, `auth-storage.ts`, `analytics-client.ts`, `beat-to-x-mapping.ts`, `lesson-transposer.ts`, `catalog-service.ts`.
 7. **Nunca armazenar secrets em código.** Usar `public/config.json` para chaves públicas (anon key).
 8. **Imutabilidade:** `LessonTransposer.transpose()` retorna clone. Engine não muta input. Manter esse padrão.
-9. **Fire-and-forget:** POST `/complete` nunca deve bloquear a UI. Falhas são logadas, não lançadas.
+9. **Fire-and-forget:** POST `/v1/sessions/{id}/complete` nunca deve bloquear a UI. Falhas são logadas, não lançadas. Guard `completeSent` impede duplicidade.
 10. **Feature flags:** Novas features experimentais devem ser protegidas por flag em `src/viewer/feature-flags/types.ts`.
-11. **Sem backend:** Este projeto funciona 100% sem backend. Não criar endpoints fake, não depender de `/v1/*`. O catálogo vem de `assets/lessons.json`.
+11. **Backend opcional:** O catálogo funciona 100% offline via `assets/lessons.json`. O POST de conclusão de sessão é fire-and-forget — se o backend estiver indisponível, o endscreen aparece normalmente.
 12. **`viewer/` (raiz) é legado.** Sempre editar `src/viewer/`. Nunca editar `viewer/`.
 13. **`assets/lessons.json` é a fonte do currículo.** Não hardcodar currículo em componentes ou serviços. Usar o pipeline: `local-catalog → adapter → Trail[]`.
 
@@ -444,6 +451,7 @@ featureFlags.init(remoteProvider?)
 - ✅ `useLessons()` hook consumindo pipeline local
 - ✅ `LessonsHubPage` exibindo catálogo real
 - ✅ Design system CSS consolidado em `src/viewer/styles.css` (neon glassmorphism, variáveis CSS, responsivo)
+- ✅ POST `/v1/sessions/{id}/complete` fire-and-forget implementado no write path (`index.tsx`)
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.

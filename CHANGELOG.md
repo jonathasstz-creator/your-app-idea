@@ -1,5 +1,30 @@
 # Changelog
 
+## [2026-03-08] - POST /complete fire-and-forget no write path
+
+### Resumo
+Implementado o POST `/v1/sessions/{session_id}/complete` fire-and-forget no callback de fim de sessão (`setupEngineEndCallback` em `index.tsx`). Antes desta correção, o frontend nunca enviava dados de conclusão ao backend — o endscreen aparecia mas nenhuma sessão era persistida, causando dashboard vazio.
+
+### Corrigido
+- **Sessões não apareciam no dashboard**: causa raiz era ausência total do POST de conclusão no write path. O fluxo terminava em `dispatchTaskCompletion()` + `showEndscreen()` — ambos locais.
+
+### Adicionado
+- **`src/viewer/index.tsx`**: bloco fire-and-forget após `dispatchTaskCompletion()` que:
+  - Monta payload: `completed_at` (ISO-8601), `duration_ms`, `summary` (pitch_accuracy, timing_accuracy, avg_latency_ms, std_latency_ms, hits, misses), `attempts_compact`
+  - Envia `POST /v1/sessions/{session_id}/complete` com headers `Authorization: Bearer <token>` + `Idempotency-Key: crypto.randomUUID()`
+  - Guard `completeSent` impede envio duplicado na mesma sessão
+  - Guards de skip: sem `session_id` ou sem auth token → log e skip
+  - Erro de rede logado como `[Complete] failed` — endscreen nunca é bloqueado
+  - Logs: `[Complete] preparing payload`, `POST sent`, `success`, `failed`, `skipped: missing session id`, `skipped: already sent`
+- **`AGENTS.md`**: fluxo 6.5 atualizado com detalhes do POST real, regra 9 e 11 atualizadas, seção "Resolvido" atualizada.
+
+### Arquivos Modificados
+- `src/viewer/index.tsx`
+- `AGENTS.md`
+- `CHANGELOG.md`
+
+---
+
 ## [2026-03-08] - Design system CSS + TrailNavigator UI rica
 
 ### Resumo
