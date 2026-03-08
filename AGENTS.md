@@ -451,6 +451,7 @@ featureFlags.init(remoteProvider?)
 - ✅ `useLessons()` hook consumindo pipeline local
 - ✅ `LessonsHubPage` exibindo catálogo real
 - ✅ Design system CSS consolidado em `src/viewer/styles.css` (neon glassmorphism, variáveis CSS, responsivo)
+- ✅ POST `/v1/sessions/{id}/complete` fire-and-forget implementado no write path (`index.tsx`)
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.
