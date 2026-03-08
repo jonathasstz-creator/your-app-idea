@@ -260,10 +260,9 @@ const getAuthToken = (): string | null => getAuthTokenFromStorage();
 const buildAuthHeaders = (): Headers => {
     const headers = new Headers();
     const token = getAuthToken();
-    if (!token) {
-        throw new Error("Auth token ausente. Faça login.");
+    if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
     }
-    headers.set("Authorization", `Bearer ${token}`);
     return headers;
 };
 
