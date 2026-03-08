@@ -17,15 +17,13 @@ export async function ensureAuthenticated(): Promise<void> {
       `supabaseAnonKey: ${cfg.supabaseAnonKey ? '✅' : '❌ missing'}`,
       `domain: ${window.location.origin}`,
     ].join(', ');
-    console.error(`[AUTH] Config incompleta: ${details}`);
-    throw new Error(
-      `Configuração de autenticação incompleta (${details}). ` +
-      'Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente.'
-    );
+    console.warn(`[AUTH] Config incompleta (${details}). Continuando sem autenticação.`);
+    return; // Non-blocking: app continues without auth
   }
 
   if (!supabase) {
-    throw new Error('Supabase client não inicializado. Verifique as variáveis de ambiente.');
+    console.warn('[AUTH] Supabase client não inicializado. Continuando sem autenticação.');
+    return; // Non-blocking: app continues without auth
   }
 
   // ── Check existing session ─────────────────────────────────────
