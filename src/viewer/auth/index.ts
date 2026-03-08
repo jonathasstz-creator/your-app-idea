@@ -17,15 +17,13 @@ export async function ensureAuthenticated(): Promise<void> {
       `supabaseAnonKey: ${cfg.supabaseAnonKey ? '✅' : '❌ missing'}`,
       `domain: ${window.location.origin}`,
     ].join(', ');
-    console.error(`[AUTH] Config incompleta: ${details}`);
-    throw new Error(
-      `Configuração de autenticação incompleta (${details}). ` +
-      'Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente.'
-    );
+    console.warn(`[AUTH] Config incompleta (${details}). Continuando sem autenticação.`);
+    return; // Non-blocking: app continues without auth
   }
 
   if (!supabase) {
-    throw new Error('Supabase client não inicializado. Verifique as variáveis de ambiente.');
+    console.warn('[AUTH] Supabase client não inicializado. Continuando sem autenticação.');
+    return; // Non-blocking: app continues without auth
   }
 
   // ── Check existing session ─────────────────────────────────────
@@ -35,8 +33,8 @@ export async function ensureAuthenticated(): Promise<void> {
     return;
   }
 
-  // ── Show auth overlay ──────────────────────────────────────────
-  return new Promise((resolve) => {
+  // ── No session: try to show auth overlay, but don't block the app ──
+  return new Promise<void>((resolve) => {
     const overlay = document.createElement('div');
     overlay.id = 'auth-gate';
     Object.assign(overlay.style, {
@@ -47,8 +45,8 @@ export async function ensureAuthenticated(): Promise<void> {
     });
     document.body.appendChild(overlay);
 
-    const app = document.getElementById('app');
-    if (app) app.style.visibility = 'hidden';
+    // Don't hide the app — let it render behind the overlay
+    // so catalog and navigation are already loaded when user logs in
 
     const root = createRoot(overlay);
     const handleAuthenticated = async () => {
@@ -63,12 +61,16 @@ export async function ensureAuthenticated(): Promise<void> {
       } catch { /* ignore */ }
       root.unmount();
       overlay.remove();
-      if (app) app.style.visibility = '';
       window.dispatchEvent(new CustomEvent('auth:success'));
-      resolve();
+      // Don't resolve here — we already resolved below to unblock the app
     };
 
     root.render(React.createElement(AuthShell, { onAuthenticated: handleAuthenticated }));
+
+    // IMPORTANT: Resolve immediately to unblock app initialization.
+    // The auth overlay stays visible but the app loads behind it.
+    // When the user logs in, the overlay is removed.
+    resolve();
   });
 }
 
