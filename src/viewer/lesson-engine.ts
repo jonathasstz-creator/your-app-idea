@@ -69,6 +69,9 @@ export interface LessonEngineApi {
   getAttemptLog(): AttemptLog[];
   getLessonMeta(): { lessonId: string | null; chapterId: number | null; totalSteps: number };
   setOnEnded(callback: (() => void) | null): void;
+  // Scoring contract: engine-derived truth for V2 metrics
+  getCompletedSteps(): number;
+  getTotalExpectedNotes(): number;
 }
 
 export interface EngineLessonBase {
