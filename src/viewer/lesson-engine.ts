@@ -967,6 +967,7 @@ class LessonEngineV2 implements LessonEngineApi {
     return ans;
   }
 
+  // TODO(PR2+): Step quality not yet applied to FILM mode — uses legacy streak logic
   private applyFilmResult(step: number, status: Exclude<ResultStatus, 'NONE'>, _accuracy?: 'PERFECT' | 'GOOD' | 'OK' | 'LATE') {
     this.judgedSteps.add(step);
     this.lastResult = status;
