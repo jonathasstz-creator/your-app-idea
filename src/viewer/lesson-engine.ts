@@ -1,5 +1,13 @@
 import { AnalyticsEvent, AnalyticsBatchPacket, LessonMode, LessonNote, LessonStepV2 } from './types';
 import { AttemptLog } from './types/task';
+import {
+  StepQuality,
+  StepQualityState,
+  createStepQualityState,
+  classifyStepQuality,
+  computeStreakDelta,
+  HARD_ERROR_BREAK_THRESHOLD,
+} from './types/step-quality';
 
 type ResultStatus = 'HIT' | 'MISS' | 'LATE' | 'NONE';
 
@@ -72,6 +80,9 @@ export interface LessonEngineApi {
   // Scoring contract: engine-derived truth for V2 metrics
   getCompletedSteps(): number;
   getTotalExpectedNotes(): number;
+  // Step quality system (behind useStepQualityStreak flag)
+  setUseStepQuality?(enabled: boolean): void;
+  getStepQualities?(): StepQuality[];
 }
 
 export interface EngineLessonBase {
@@ -529,6 +540,11 @@ class LessonEngineV2 implements LessonEngineApi {
   private timer: { stop: () => void } | null = null;
   private endedNotified = false;
 
+  // Step Quality tracking (active behind useStepQualityStreak flag)
+  private stepQualityState: StepQualityState = createStepQualityState();
+  private stepQualities: StepQuality[] = [];
+  private useStepQuality = false;
+
   loadLesson(content: EngineLessonV2) {
     this.lesson = content;
     this.steps = [...(content.steps || [])]
@@ -567,6 +583,13 @@ class LessonEngineV2 implements LessonEngineApi {
     this.activeStep = null;
     this.attemptLog = [];
     this.stepStartTime = Date.now();
+    this.stepQualityState = createStepQualityState();
+    this.stepQualities = [];
+  }
+
+  /** Enable step quality streak (call before loadLesson or after reset). */
+  setUseStepQuality(enabled: boolean) {
+    this.useStepQuality = enabled;
   }
 
   forceEnd() {
@@ -593,11 +616,10 @@ class LessonEngineV2 implements LessonEngineApi {
     const chordNotes = Array.isArray(targetStep.notes) ? targetStep.notes : [];
     const expectedMidi = chordNotes.length > 0 ? chordNotes[0] : midiInt;
 
+    // CORRECT_NEW_NOTE
     if (chordNotes.includes(midiInt) && !this.stepState.has(midiInt)) {
       this.stepState.add(midiInt);
       const isComplete = chordNotes.every((m) => this.stepState.has(m));
-      // Use midiInt as expected (not chordNotes[0]) so AttemptLog.expected
-      // reflects the actual chord note being satisfied, not just the root.
       this.logAttempt(midiInt, midiInt, true);
       if (isComplete) {
         this.onStepComplete('HIT');
@@ -606,13 +628,24 @@ class LessonEngineV2 implements LessonEngineApi {
       return { advanced: false, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
     }
 
-    if (!chordNotes.includes(midiInt)) {
-      this.logAttempt(midiInt, expectedMidi, false);
-      this.onStepComplete('MISS');
-      return { advanced: false, result: 'MISS' as ResultStatus, score: this.score, streak: this.streak };
+    // CORRECT_DUPLICATE_NOTE — soft error, no streak impact
+    if (chordNotes.includes(midiInt) && this.stepState.has(midiInt)) {
+      if (this.useStepQuality) {
+        this.stepQualityState.softErrorCount += 1;
+      }
+      return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
     }
 
-    return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
+    // EXTRA_WRONG_NOTE — hard error
+    this.logAttempt(midiInt, expectedMidi, false);
+    if (this.useStepQuality) {
+      this.stepQualityState.hardErrorCount += 1;
+      if (this.stepQualityState.hardErrorCount >= HARD_ERROR_BREAK_THRESHOLD) {
+        this.streak = 0; // break streak mid-step on excessive errors
+      }
+    }
+    this.onStepComplete('MISS');
+    return { advanced: false, result: 'MISS' as ResultStatus, score: this.score, streak: this.streak };
   }
 
   tickFilm(
@@ -857,14 +890,39 @@ class LessonEngineV2 implements LessonEngineApi {
     });
 
     if (status === 'HIT') {
-      this.streak += 1;
-      this.bestStreak = Math.max(this.bestStreak, this.streak);
       this.score += 1;
+
+      if (this.useStepQuality) {
+        // Quality-based streak
+        const quality = classifyStepQuality(
+          this.stepQualityState.hardErrorCount,
+          this.stepQualityState.softErrorCount
+        );
+        this.stepQualityState.quality = quality;
+        this.stepQualities.push(quality);
+        const delta = computeStreakDelta(quality, this.streak);
+        this.streak = Math.max(0, this.streak + delta);
+      } else {
+        // Legacy: streak increments on every HIT
+        this.streak += 1;
+      }
+
+      this.bestStreak = Math.max(this.bestStreak, this.streak);
       this.currentStep += 1;
       this.stepState.clear();
+      this.stepQualityState = createStepQualityState();
     } else {
-      this.streak = 0;
+      if (!this.useStepQuality) {
+        // Legacy: MISS resets streak immediately
+        this.streak = 0;
+      }
+      // With step quality, streak is only affected at step completion or
+      // when HARD_ERROR_BREAK_THRESHOLD is exceeded (handled in onMidiInput).
+      // Do NOT reset stepQualityState on MISS — errors accumulate across retries.
       this.stepState.clear();
+      if (!this.useStepQuality) {
+        this.stepQualityState = createStepQualityState();
+      }
     }
 
     this.lastResult = status;
@@ -972,6 +1030,10 @@ class LessonEngineV2 implements LessonEngineApi {
 
   getTotalExpectedNotes(): number {
     return this.steps.reduce((sum, s) => sum + (s.notes?.length ?? 0), 0);
+  }
+
+  getStepQualities(): StepQuality[] {
+    return [...this.stepQualities];
   }
 
   private logAttempt(midi: number, expected: number, success: boolean) {
