@@ -47,6 +47,7 @@ import { featureFlags } from './feature-flags/store';
 import { createRemoteFlagProvider } from './feature-flags/providers/remote';
 import { FeatureFlags } from './feature-flags/types';
 import { TrailNavigator } from './components/TrailNavigator';
+import { StepQualityBadgeController, NoteFeedbackController, ChordClosureEffect } from './step-quality-ui';
 
 console.log('[INIT] ✅ All imports loaded successfully!');
 
