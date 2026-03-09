@@ -125,6 +125,29 @@ describe("Polyphony V2 — Chord Expansion", () => {
     expect(engine.getViewState().score).toBe(2);
     expect(engine.getViewState().status).toBe("DONE");
   });
+
+  it("AttemptLog.expected reflects each chord note, not just chordNotes[0]", () => {
+    engine.loadLesson(makeV2Lesson([{ notes: [60, 64, 67], start_beat: 0 }]));
+
+    engine.onMidiInput(60, 100, true);
+    engine.onMidiInput(64, 100, true);
+    engine.onMidiInput(67, 100, true);
+
+    const log = engine.getAttemptLog();
+    const successes = log.filter((a) => a.success);
+
+    // Each successful attempt should have expected === midi (the note it matched)
+    for (const a of successes) {
+      expect(a.expected).toBe(a.midi);
+    }
+
+    // Verify we have 3 distinct expected values, not all chordNotes[0]
+    const expectedValues = new Set(successes.map((a) => a.expected));
+    expect(expectedValues.size).toBe(3);
+    expect(expectedValues).toContain(60);
+    expect(expectedValues).toContain(64);
+    expect(expectedValues).toContain(67);
+  });
 });
 
 describe("Polyphony V2 — Miss Window & duration_beats", () => {
