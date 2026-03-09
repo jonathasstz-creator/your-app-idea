@@ -613,11 +613,10 @@ class LessonEngineV2 implements LessonEngineApi {
     const chordNotes = Array.isArray(targetStep.notes) ? targetStep.notes : [];
     const expectedMidi = chordNotes.length > 0 ? chordNotes[0] : midiInt;
 
+    // CORRECT_NEW_NOTE
     if (chordNotes.includes(midiInt) && !this.stepState.has(midiInt)) {
       this.stepState.add(midiInt);
       const isComplete = chordNotes.every((m) => this.stepState.has(m));
-      // Use midiInt as expected (not chordNotes[0]) so AttemptLog.expected
-      // reflects the actual chord note being satisfied, not just the root.
       this.logAttempt(midiInt, midiInt, true);
       if (isComplete) {
         this.onStepComplete('HIT');
@@ -626,13 +625,24 @@ class LessonEngineV2 implements LessonEngineApi {
       return { advanced: false, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
     }
 
-    if (!chordNotes.includes(midiInt)) {
-      this.logAttempt(midiInt, expectedMidi, false);
-      this.onStepComplete('MISS');
-      return { advanced: false, result: 'MISS' as ResultStatus, score: this.score, streak: this.streak };
+    // CORRECT_DUPLICATE_NOTE — soft error, no streak impact
+    if (chordNotes.includes(midiInt) && this.stepState.has(midiInt)) {
+      if (this.useStepQuality) {
+        this.stepQualityState.softErrorCount += 1;
+      }
+      return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
     }
 
-    return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
+    // EXTRA_WRONG_NOTE — hard error
+    this.logAttempt(midiInt, expectedMidi, false);
+    if (this.useStepQuality) {
+      this.stepQualityState.hardErrorCount += 1;
+      if (this.stepQualityState.hardErrorCount >= HARD_ERROR_BREAK_THRESHOLD) {
+        this.streak = 0; // break streak mid-step on excessive errors
+      }
+    }
+    this.onStepComplete('MISS');
+    return { advanced: false, result: 'MISS' as ResultStatus, score: this.score, streak: this.streak };
   }
 
   tickFilm(
