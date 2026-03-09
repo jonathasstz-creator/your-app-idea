@@ -1621,6 +1621,10 @@ const init = async () => {
                     .map(({ step }) => step);
                 lessonSteps = orderedSteps;
                 engine = createEngineV2();
+                // PR2: Wire step quality flag from feature flags into engine
+                if (featureFlagSnapshot.useStepQualityStreak) {
+                    engine.setUseStepQuality(true);
+                }
                 engine.setTimer(lessonTimer); // 🔒 wire timer so forceEnd() stops the HUD interval
                 sessionController = new LessonSessionController({ timer: lessonTimer, frameLoop: transportClient, engine });
                 setupEngineEndCallback(); // PR2: Setup endscreen callback
