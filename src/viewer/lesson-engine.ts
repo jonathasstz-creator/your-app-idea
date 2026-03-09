@@ -1,5 +1,13 @@
 import { AnalyticsEvent, AnalyticsBatchPacket, LessonMode, LessonNote, LessonStepV2 } from './types';
 import { AttemptLog } from './types/task';
+import {
+  StepQuality,
+  StepQualityState,
+  createStepQualityState,
+  classifyStepQuality,
+  computeStreakDelta,
+  HARD_ERROR_BREAK_THRESHOLD,
+} from './types/step-quality';
 
 type ResultStatus = 'HIT' | 'MISS' | 'LATE' | 'NONE';
 
