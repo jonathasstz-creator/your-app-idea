@@ -2041,3 +2041,96 @@ table {
   0%, 100% { opacity: 0.55; }
   50% { opacity: 0.85; }
 }
+
+/* ============================================================
+   PR2 — Step Quality UX Layer
+   ============================================================ */
+
+/* Quality Badge */
+.hud-item.feedback-msg {
+  position: relative;
+}
+
+.quality-badge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid currentColor;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.quality-perfect { color: var(--primary-neon); }
+.quality-great   { color: var(--success-neon); }
+.quality-good    { color: var(--warn); }
+.quality-recovered { color: var(--muted); }
+
+.quality-badge-enter {
+  animation: quality-in 0.3s ease forwards;
+}
+
+.quality-badge-exit {
+  animation: quality-out 0.3s ease forwards;
+}
+
+@keyframes quality-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes quality-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-4px) scale(0.85); }
+}
+
+/* Chord Closure Pulse — applied to #hud-step on chord completion */
+.chord-closure-pulse {
+  animation: chord-pulse 0.5s ease !important;
+}
+
+@keyframes chord-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.5); }
+  50%  { box-shadow: 0 0 14px 4px rgba(0, 242, 255, 0.35); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Note Feedback States */
+.judge-feedback.is-partial {
+  color: var(--primary-neon);
+  opacity: 0.85;
+}
+
+.judge-feedback.is-chord-complete {
+  color: var(--success-neon);
+  animation: feedback-flash 0.4s ease;
+}
+
+.judge-feedback.is-wrong-brief {
+  color: var(--error-neon);
+  animation: feedback-shake 0.3s ease;
+}
+
+.judge-feedback.is-duplicate-flash {
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+}
+
+@keyframes feedback-flash {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes feedback-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-2px); }
+  75%      { transform: translateX(2px); }
+}
