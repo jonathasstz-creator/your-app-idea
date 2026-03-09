@@ -80,6 +80,9 @@ export interface LessonEngineApi {
   // Scoring contract: engine-derived truth for V2 metrics
   getCompletedSteps(): number;
   getTotalExpectedNotes(): number;
+  // Step quality system (behind useStepQualityStreak flag)
+  setUseStepQuality?(enabled: boolean): void;
+  getStepQualities?(): StepQuality[];
 }
 
 export interface EngineLessonBase {
