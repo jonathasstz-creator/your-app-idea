@@ -596,7 +596,9 @@ class LessonEngineV2 implements LessonEngineApi {
     if (chordNotes.includes(midiInt) && !this.stepState.has(midiInt)) {
       this.stepState.add(midiInt);
       const isComplete = chordNotes.every((m) => this.stepState.has(m));
-      this.logAttempt(midiInt, expectedMidi, true);
+      // Use midiInt as expected (not chordNotes[0]) so AttemptLog.expected
+      // reflects the actual chord note being satisfied, not just the root.
+      this.logAttempt(midiInt, midiInt, true);
       if (isComplete) {
         this.onStepComplete('HIT');
         return { advanced: true, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
