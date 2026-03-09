@@ -25,4 +25,5 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   showNewCurriculum: true,
   showIntermediateCurriculum: true,
   useWebSocket: false,
+  useStepQualityStreak: false,
 };
