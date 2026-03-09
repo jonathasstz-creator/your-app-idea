@@ -5,7 +5,7 @@
  * useStepQualityStreak flag, soft vs hard error tracking.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createEngineV2 } from '../lesson-engine';
+import { createEngineV1, createEngineV2 } from '../lesson-engine';
 import type { LessonEngineApi } from '../lesson-engine';
 import {
   classifyStepQuality,
@@ -70,7 +70,7 @@ describe('V2 Engine — Step Quality with flag ON', () => {
 
   beforeEach(() => {
     engine = createEngineV2();
-    engine.setUseStepQuality!(true);
+    engine.setUseStepQuality(true);
   });
 
   it('PERFECT step: streak goes up, quality recorded', () => {
@@ -79,14 +79,13 @@ describe('V2 Engine — Step Quality with flag ON', () => {
       { notes: [67], start_beat: 1 },
     ]));
 
-    // Complete chord perfectly
     engine.onMidiInput(60, 100, true);
     engine.onMidiInput(64, 100, true);
 
     const view = engine.getViewState();
     expect(view.streak).toBe(1);
     expect(view.currentStep).toBe(1);
-    expect(engine.getStepQualities!()).toEqual(['PERFECT']);
+    expect(engine.getStepQualities()).toEqual(['PERFECT']);
   });
 
   it('GREAT step: one duplicate (soft error), streak still goes up', () => {
@@ -97,29 +96,27 @@ describe('V2 Engine — Step Quality with flag ON', () => {
     engine.onMidiInput(64, 100, true);
 
     expect(engine.getViewState().streak).toBe(1);
-    expect(engine.getStepQualities!()).toEqual(['GREAT']);
+    expect(engine.getStepQualities()).toEqual(['GREAT']);
   });
 
-  it('GOOD step: 1 wrong note then correct, streak holds', () => {
+  it('GOOD step: 1 wrong note then correct — errors accumulate across retries', () => {
     engine.loadLesson(makeLesson([
       { notes: [60], start_beat: 0 },
       { notes: [62], start_beat: 1 },
     ]));
 
-    engine.onMidiInput(99, 100, true); // wrong = hard error, step resets
-    engine.onMidiInput(60, 100, true); // correct, completes step
+    // Wrong note → MISS, but with flag ON stepQualityState persists (errors accumulate).
+    // hardErrorCount=1 after this.
+    engine.onMidiInput(99, 100, true);
+    // Correct → completes step. hardErrorCount=1 → GOOD.
+    engine.onMidiInput(60, 100, true);
 
     const view = engine.getViewState();
     expect(view.currentStep).toBe(1);
-    // With step quality, the step had 1 hard error → GOOD
-    // But note: MISS resets stepState, and the step quality state
-    // was also reset on MISS. So the second attempt is clean.
-    // Actually, stepQualityState resets on MISS in onStepComplete.
-    // So the completed step is PERFECT (the retry is a new attempt).
-    // This is actually correct: the step that completed had 0 errors.
+    expect(engine.getStepQualities()).toEqual(['GOOD']);
   });
 
-  it('single wrong note then correct: streak holds (GOOD quality)', () => {
+  it('single wrong note then correct: GOOD quality, streak holds', () => {
     engine.loadLesson(makeLesson([
       { notes: [60], start_beat: 0 },
       { notes: [62], start_beat: 1 },
@@ -130,58 +127,94 @@ describe('V2 Engine — Step Quality with flag ON', () => {
     engine.onMidiInput(60, 100, true);
     expect(engine.getViewState().streak).toBe(1);
 
-    // Step 1: one wrong note (hard error accumulated), then correct
-    engine.onMidiInput(99, 100, true); // MISS — hard error counted
-    engine.onMidiInput(62, 100, true); // HIT — step completes as GOOD (1 hard error)
+    // Step 1: wrong note (hardErrorCount=1, persists), then correct → GOOD
     // GOOD with streak < 5 → delta=0, streak holds at 1
+    engine.onMidiInput(99, 100, true);
+    engine.onMidiInput(62, 100, true);
     expect(engine.getViewState().streak).toBe(1);
     expect(engine.getViewState().currentStep).toBe(2);
+    expect(engine.getStepQualities()).toEqual(['PERFECT', 'GOOD']);
+  });
+
+  it('GOOD with streak >= 5 causes streak "damage" (-1)', () => {
+    engine.loadLesson(makeLesson([
+      { notes: [60], start_beat: 0 },
+      { notes: [62], start_beat: 1 },
+      { notes: [64], start_beat: 2 },
+      { notes: [65], start_beat: 3 },
+      { notes: [67], start_beat: 4 },
+      { notes: [69], start_beat: 5 }, // step 5: will have 1 hard error → GOOD
+      { notes: [71], start_beat: 6 },
+    ]));
+
+    // Build streak to 5 with perfect steps
+    engine.onMidiInput(60, 100, true);
+    engine.onMidiInput(62, 100, true);
+    engine.onMidiInput(64, 100, true);
+    engine.onMidiInput(65, 100, true);
+    engine.onMidiInput(67, 100, true);
+    expect(engine.getViewState().streak).toBe(5);
+
+    // Step 5: 1 wrong note → GOOD → streak damaged from 5 to 4
+    engine.onMidiInput(99, 100, true); // hard error
+    engine.onMidiInput(69, 100, true); // complete → GOOD
+    expect(engine.getViewState().streak).toBe(4);
+    expect(engine.getViewState().bestStreak).toBe(5); // bestStreak preserved
   });
 
   it('streak broken when many hard errors accumulate in chord step', () => {
-    // In chord steps, wrong notes don't advance/reset the step,
-    // so hard errors accumulate within a single step attempt.
     engine.loadLesson(makeLesson([
       { notes: [60], start_beat: 0 },
-      { notes: [62, 64], start_beat: 1 }, // chord step
+      { notes: [62, 64], start_beat: 1 },
     ]));
 
     // Step 0: perfect, streak=1
     engine.onMidiInput(60, 100, true);
     expect(engine.getViewState().streak).toBe(1);
 
-    // Step 1 (chord): hit first note, then spam wrong notes
-    engine.onMidiInput(62, 100, true); // partial hit, no advance
-
-    // Now spam wrong notes — in chord mode these are hard errors
-    // that don't cause MISS (only non-chord notes in single-note steps cause MISS)
-    // Actually: wrong note in chord step DOES cause MISS and resets stepState.
-    // So threshold is hard to reach in current engine design.
-    // Test the mid-step break directly by accumulating errors fast.
+    // Step 1 (chord): wrong notes cause MISS and reset stepState,
+    // but with flag ON, stepQualityState persists — hardErrorCount accumulates.
     for (let i = 0; i < HARD_ERROR_BREAK_THRESHOLD; i++) {
-      engine.onMidiInput(99, 100, true); // each resets step state
+      engine.onMidiInput(99, 100, true);
     }
 
-    // After threshold errors, streak should be broken
+    // After threshold errors, streak should be broken mid-step
     expect(engine.getViewState().streak).toBe(0);
   });
 
-  it('RECOVERED step: many errors before completing', () => {
+  it('RECOVERED step: many errors before completing — quality reflects accumulated errors', () => {
     engine.loadLesson(makeLesson([
       { notes: [60, 64], start_beat: 0 },
       { notes: [67], start_beat: 1 },
     ]));
 
-    // Multiple wrong notes (chord step)
-    engine.onMidiInput(99, 100, true); // hard error → stepState resets
-    engine.onMidiInput(98, 100, true); // hard error → stepState resets
-    // Now complete the step cleanly (but stepQualityState was reset each MISS)
+    // With flag ON, stepQualityState persists across MISSes on same step.
+    // 2 wrong notes → hardErrorCount=2, then complete → RECOVERED (2+ hard errors).
+    engine.onMidiInput(99, 100, true); // hard error #1
+    engine.onMidiInput(98, 100, true); // hard error #2
     engine.onMidiInput(60, 100, true);
-    engine.onMidiInput(64, 100, true);
+    engine.onMidiInput(64, 100, true); // complete
 
-    // The step that completed had 0 errors (reset on each MISS)
-    // This is by design: each "attempt" at the step starts fresh
     expect(engine.getViewState().currentStep).toBe(1);
+    expect(engine.getStepQualities()).toEqual(['RECOVERED']);
+  });
+
+  it('reset() clears stepQualities but preserves useStepQuality flag', () => {
+    engine.loadLesson(makeLesson([
+      { notes: [60], start_beat: 0 },
+      { notes: [62], start_beat: 1 },
+    ]));
+
+    engine.onMidiInput(60, 100, true); // PERFECT
+    expect(engine.getStepQualities()).toEqual(['PERFECT']);
+
+    engine.reset();
+    expect(engine.getStepQualities()).toEqual([]); // cleared
+
+    // Flag still ON — new step should still be tracked
+    engine.loadLesson(makeLesson([{ notes: [64], start_beat: 0 }]));
+    engine.onMidiInput(64, 100, true);
+    expect(engine.getStepQualities()).toEqual(['PERFECT']);
   });
 });
 
@@ -223,6 +256,30 @@ describe('V2 Engine — Legacy streak (flag OFF)', () => {
   it('getStepQualities returns empty (no tracking)', () => {
     engine.loadLesson(makeLesson([{ notes: [60], start_beat: 0 }]));
     engine.onMidiInput(60, 100, true);
-    expect(engine.getStepQualities!()).toEqual([]);
+    expect(engine.getStepQualities()).toEqual([]);
+  });
+});
+
+// ============================================================
+// V1 Engine — Step Quality stubs (should not crash)
+// ============================================================
+
+describe('V1 Engine — Step Quality stubs', () => {
+  it('setUseStepQuality and getStepQualities are safe no-ops', () => {
+    const engine = createEngineV1();
+    // Should not throw
+    engine.setUseStepQuality(true);
+    expect(engine.getStepQualities()).toEqual([]);
+
+    engine.loadLesson({
+      session_id: 'test',
+      lesson_id: 'test',
+      lesson_version: 1,
+      total_steps: 1,
+      notes: [{ midi: 60, step_index: 0, start_beat: 0, duration_beats: 1 }],
+    });
+    engine.onMidiInput(60, 100, true);
+    // Still empty — V1 never tracks quality
+    expect(engine.getStepQualities()).toEqual([]);
   });
 });

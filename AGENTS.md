@@ -404,6 +404,25 @@ featureFlags.init(remoteProvider?)
 - Se uma nota errada for tocada durante um chord parcial, é MISS e reseta o `stepState`.
 - Duplicatas de nota são ignoradas (não contam 2x).
 
+### Step Quality System (PR1 — feature flag)
+- **Escopo:** Engine V2, modo WAIT polifônico apenas. FILM mode **não usa** Step Quality (usa streak legado).
+- **Feature flag:** `useStepQualityStreak` (default: `false`). Com flag OFF, comportamento legado preservado integralmente.
+- **Classificações por step completado:**
+  - `PERFECT` — 0 hard errors, 0 soft errors
+  - `GREAT` — 0 hard errors, ≤1 soft error
+  - `GOOD` — ≤1 hard error
+  - `RECOVERED` — 2+ hard errors
+- **Soft errors:** duplicate notes, exploração inofensiva. **Hard errors:** notas fora do acorde.
+- **Streak rules (flag ON):**
+  - PERFECT/GREAT → streak +1
+  - GOOD → streak mantém (ou -1 se streak ≥ 5, "damage")
+  - RECOVERED → streak reseta a 0
+  - Mid-step: se `hardErrorCount ≥ HARD_ERROR_BREAK_THRESHOLD` (3), streak quebra imediatamente
+- **Estado:** `stepQualities` é array local do engine, não persiste em backend.
+- **Interface:** `setUseStepQuality(enabled)` e `getStepQualities()` são obrigatórios na `LessonEngineApi`. V1 implementa stubs (no-op).
+- **Arquivos:** `src/viewer/types/step-quality.ts`, integração em `src/viewer/lesson-engine.ts`.
+- **Próximo:** PR2 focará em feedback visual por nota e badge no HUD.
+
 ### Beat-to-X mapping
 - Se a taxa de match entre notas OSMD e steps for < 80%, fallbacks são acionados automaticamente.
 - A monotonicidade (x nunca diminui com beat crescente) é crítica. Se quebrar, falling notes "voltam" na tela.
@@ -464,6 +483,7 @@ featureFlags.init(remoteProvider?)
 - ✅ `LessonsHubPage` exibindo catálogo real
 - ✅ Design system CSS consolidado em `src/viewer/styles.css` (neon glassmorphism, variáveis CSS, responsivo)
 - ✅ POST `/v1/sessions/{id}/complete` fire-and-forget implementado no write path (`index.tsx`)
+- ✅ Step Quality System (PR1): classificação PERFECT/GREAT/GOOD/RECOVERED, streak por qualidade de step, feature flag `useStepQualityStreak`
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.

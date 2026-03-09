@@ -81,8 +81,8 @@ export interface LessonEngineApi {
   getCompletedSteps(): number;
   getTotalExpectedNotes(): number;
   // Step quality system (behind useStepQualityStreak flag)
-  setUseStepQuality?(enabled: boolean): void;
-  getStepQualities?(): StepQuality[];
+  setUseStepQuality(enabled: boolean): void;
+  getStepQualities(): StepQuality[];
 }
 
 export interface EngineLessonBase {
@@ -477,6 +477,10 @@ class LessonEngineV1 implements LessonEngineApi {
   getTotalExpectedNotes(): number {
     return this.notes.length; // V1: 1 note per step
   }
+
+  // Step quality stubs — V1 does not use step quality, safe no-ops
+  setUseStepQuality(_enabled: boolean): void { /* no-op for V1 */ }
+  getStepQualities(): StepQuality[] { return []; }
 
   private logAttempt(midi: number, expected: number, success: boolean) {
     const now = Date.now();
@@ -963,6 +967,7 @@ class LessonEngineV2 implements LessonEngineApi {
     return ans;
   }
 
+  // TODO(PR2+): Step quality not yet applied to FILM mode — uses legacy streak logic
   private applyFilmResult(step: number, status: Exclude<ResultStatus, 'NONE'>, _accuracy?: 'PERFECT' | 'GOOD' | 'OK' | 'LATE') {
     this.judgedSteps.add(step);
     this.lastResult = status;
