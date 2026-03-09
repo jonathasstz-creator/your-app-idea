@@ -119,21 +119,22 @@ describe('V2 Engine — Step Quality with flag ON', () => {
     // This is actually correct: the step that completed had 0 errors.
   });
 
-  it('streak not broken by single wrong note (no HARD_ERROR_BREAK)', () => {
+  it('single wrong note then correct: streak holds (GOOD quality)', () => {
     engine.loadLesson(makeLesson([
       { notes: [60], start_beat: 0 },
       { notes: [62], start_beat: 1 },
       { notes: [64], start_beat: 2 },
     ]));
 
-    // Step 0: perfect
+    // Step 0: perfect, streak=1
     engine.onMidiInput(60, 100, true);
     expect(engine.getViewState().streak).toBe(1);
 
-    // Step 1: one wrong note (hard error), then correct
-    engine.onMidiInput(99, 100, true); // MISS
-    engine.onMidiInput(62, 100, true); // HIT
-    expect(engine.getViewState().streak).toBe(2);
+    // Step 1: one wrong note (hard error accumulated), then correct
+    engine.onMidiInput(99, 100, true); // MISS — hard error counted
+    engine.onMidiInput(62, 100, true); // HIT — step completes as GOOD (1 hard error)
+    // GOOD with streak < 5 → delta=0, streak holds at 1
+    expect(engine.getViewState().streak).toBe(1);
     expect(engine.getViewState().currentStep).toBe(2);
   });
 
