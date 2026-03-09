@@ -4,7 +4,8 @@ export type FeatureFlagName =
   | 'showNewCurriculum'
   | 'showIntermediateCurriculum'
   | 'useWebSocket'
-  | 'useStepQualityStreak';
+  | 'useStepQualityStreak'
+  | 'showStepQualityFeedback';
 
 export type FeatureFlags = Record<FeatureFlagName, boolean>;
 export type FlagSource = 'default' | 'localStorage' | 'remote' | 'runtime';
@@ -26,4 +27,5 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   showIntermediateCurriculum: true,
   useWebSocket: false,
   useStepQualityStreak: false,
+  showStepQualityFeedback: false,
 };
