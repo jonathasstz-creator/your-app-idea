@@ -1029,6 +1029,10 @@ class LessonEngineV2 implements LessonEngineApi {
     return this.steps.reduce((sum, s) => sum + (s.notes?.length ?? 0), 0);
   }
 
+  getStepQualities(): StepQuality[] {
+    return [...this.stepQualities];
+  }
+
   private logAttempt(midi: number, expected: number, success: boolean) {
     const now = Date.now();
     const responseMs = this.stepStartTime > 0 ? now - this.stepStartTime : undefined;
