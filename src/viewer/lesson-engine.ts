@@ -81,8 +81,8 @@ export interface LessonEngineApi {
   getCompletedSteps(): number;
   getTotalExpectedNotes(): number;
   // Step quality system (behind useStepQualityStreak flag)
-  setUseStepQuality?(enabled: boolean): void;
-  getStepQualities?(): StepQuality[];
+  setUseStepQuality(enabled: boolean): void;
+  getStepQualities(): StepQuality[];
 }
 
 export interface EngineLessonBase {
