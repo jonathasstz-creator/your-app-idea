@@ -537,6 +537,11 @@ class LessonEngineV2 implements LessonEngineApi {
   private timer: { stop: () => void } | null = null;
   private endedNotified = false;
 
+  // Step Quality tracking (active behind useStepQualityStreak flag)
+  private stepQualityState: StepQualityState = createStepQualityState();
+  private stepQualities: StepQuality[] = [];
+  private useStepQuality = false;
+
   loadLesson(content: EngineLessonV2) {
     this.lesson = content;
     this.steps = [...(content.steps || [])]
