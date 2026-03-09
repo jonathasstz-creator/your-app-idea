@@ -478,6 +478,10 @@ class LessonEngineV1 implements LessonEngineApi {
     return this.notes.length; // V1: 1 note per step
   }
 
+  // Step quality stubs — V1 does not use step quality, safe no-ops
+  setUseStepQuality(_enabled: boolean): void { /* no-op for V1 */ }
+  getStepQualities(): StepQuality[] { return []; }
+
   private logAttempt(midi: number, expected: number, success: boolean) {
     const now = Date.now();
     const responseMs = this.stepStartTime > 0 ? now - this.stepStartTime : undefined;
