@@ -78,6 +78,6 @@ export function computeStreakDelta(
       // "damage" streak if high, otherwise hold
       return currentStreak >= 5 ? -1 : 0;
     case 'RECOVERED':
-      return -currentStreak; // reset to 0
+      return currentStreak > 0 ? -currentStreak : 0; // reset to 0
   }
 }
