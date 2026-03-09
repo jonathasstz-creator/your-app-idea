@@ -917,9 +917,12 @@ class LessonEngineV2 implements LessonEngineApi {
         this.streak = 0;
       }
       // With step quality, streak is only affected at step completion or
-      // when HARD_ERROR_BREAK_THRESHOLD is exceeded (handled in onMidiInput)
+      // when HARD_ERROR_BREAK_THRESHOLD is exceeded (handled in onMidiInput).
+      // Do NOT reset stepQualityState on MISS — errors accumulate across retries.
       this.stepState.clear();
-      this.stepQualityState = createStepQualityState();
+      if (!this.useStepQuality) {
+        this.stepQualityState = createStepQualityState();
+      }
     }
 
     this.lastResult = status;
