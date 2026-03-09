@@ -486,6 +486,18 @@ const init = async () => {
     await featureFlags.init(createRemoteFlagProvider());
     featureFlagSnapshot = featureFlags.snapshot();
 
+    // PR2: Step Quality UX controllers (only instantiated when flag is on)
+    let qualityBadge: StepQualityBadgeController | null = null;
+    let noteFeedbackCtrl: NoteFeedbackController | null = null;
+    let chordClosure: ChordClosureEffect | null = null;
+    let chordHitCount = 0;
+
+    if (featureFlagSnapshot.showStepQualityFeedback) {
+      qualityBadge = new StepQualityBadgeController();
+      noteFeedbackCtrl = new NoteFeedbackController();
+      chordClosure = new ChordClosureEffect();
+    }
+
     // --- Helper for UI State ---
     let lastTransportState = { playing: false, visible: false, mode: "" as string };
 
