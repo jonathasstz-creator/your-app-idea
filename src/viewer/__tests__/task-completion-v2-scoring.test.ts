@@ -178,4 +178,49 @@ describe("computeTaskResult — V2 engine truth path", () => {
     // stepAccuracy
     expect(result.correctSteps / result.totalSteps).toBe(1.0);
   });
+
+  it("BUG REGRESSION: 100% steps + 100% per-note breakdown → noteAccuracy must be 100%", () => {
+    // Reproduces the bug: V2 engine logs expected=chordNotes[0] for ALL notes.
+    // With old code, expectedSet per step had only 1 value → correctNotes was halved.
+    // 20 steps, each with 2-note chord. All completed. No misses.
+    const attempts: AttemptLog[] = [];
+    for (let s = 0; s < 20; s++) {
+      // Engine logs expected=chordNotes[0] for both notes (the real bug pattern)
+      const root = 60 + (s % 3) * 4; // C4, E4, G4 cycling
+      const third = root + 4;
+      attempts.push(mkAttempt(s, root, root, true));   // expected = chordNotes[0] = root
+      attempts.push(mkAttempt(s, third, root, true));   // expected = chordNotes[0] = root (BUG!)
+    }
+
+    const result = computeTaskResult(
+      attempts, 20, "WAIT", "lesson_chords", 1, "V2",
+      { completedSteps: 20, totalExpectedNotes: 40 }
+    ) as TaskResultSummaryV2;
+
+    // With the fix, correctNotes uses a.midi (unique per step), not a.expected
+    expect(result.correctSteps).toBe(20);
+    expect(result.totalExpectedNotes).toBe(40);
+    expect(result.correctNotes).toBe(40);  // Was 20 before fix!
+    expect(result.noteAccuracy).toBeCloseTo(1.0);  // Was 0.5 before fix!
+  });
+
+  it("breakdown per-note and noteAccuracy are mathematically consistent", () => {
+    // 3 steps: chord [60,64], chord [60,67], single [60]
+    // Step 0 complete, step 1 complete, step 2 complete
+    const attempts: AttemptLog[] = [
+      mkAttempt(0, 60, 60, true),
+      mkAttempt(0, 64, 60, true),  // expected=60 (engine bug), midi=64
+      mkAttempt(1, 60, 60, true),
+      mkAttempt(1, 67, 60, true),  // expected=60 (engine bug), midi=67
+      mkAttempt(2, 60, 60, true),
+    ];
+
+    const result = computeTaskResult(
+      attempts, 3, "WAIT", undefined, undefined, "V2",
+      { completedSteps: 3, totalExpectedNotes: 5 }
+    ) as TaskResultSummaryV2;
+
+    expect(result.correctNotes).toBe(5);
+    expect(result.noteAccuracy).toBeCloseTo(1.0);
+  });
 });
