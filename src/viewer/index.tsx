@@ -1385,6 +1385,11 @@ const init = async () => {
         engine.forceEnd();
         filmEnded = false;
         filmHudFlash = null;
+        // PR2: Clear step quality UI
+        qualityBadge?.clear();
+        noteFeedbackCtrl?.clear();
+        chordClosure?.clear();
+        chordHitCount = 0;
         ui.updateHud({ step: 0, total: totalSteps ?? null, status: "RESET", scoreTotal: 0, streak: 0, bestStreak: 0 });
     };
 
