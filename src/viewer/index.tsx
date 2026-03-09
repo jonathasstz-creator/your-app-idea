@@ -1807,6 +1807,43 @@ const init = async () => {
             }
             // Force render update immediately (includes cursor update)
             renderView(viewAfter);
+
+            // PR2: Step Quality visual feedback (WAIT mode, V2 only)
+            if (featureFlagSnapshot.showStepQualityFeedback && currentSchemaVersion === 2) {
+                const stepAdvanced = viewAfter.currentStep > viewBefore.currentStep;
+
+                if (stepAdvanced) {
+                    // Step completed
+                    const chordSize = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
+                    chordHitCount = 0;
+
+                    if (chordSize > 1) {
+                        chordClosure?.trigger();
+                        noteFeedbackCtrl?.showChordComplete();
+                    }
+
+                    // Quality badge (only when step quality tracking is active)
+                    if (featureFlagSnapshot.useStepQualityStreak) {
+                        const qualities = engine.getStepQualities();
+                        const lastQ = qualities[qualities.length - 1];
+                        if (lastQ) qualityBadge?.show(lastQ);
+                    }
+                } else if (res?.result === 'HIT') {
+                    // Partial chord hit
+                    chordHitCount += 1;
+                    const chordTotal = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
+                    if (chordTotal > 1) {
+                        noteFeedbackCtrl?.showPartialHit(chordHitCount, chordTotal);
+                    }
+                } else if (res?.result === 'MISS') {
+                    // Wrong note
+                    chordHitCount = 0;
+                    noteFeedbackCtrl?.showWrongNote();
+                } else if (res?.result === 'NONE' && isOn) {
+                    // Duplicate note
+                    noteFeedbackCtrl?.showDuplicate();
+                }
+            }
         } else if (practiceMode === "FILM" && lastFilmSnapshot) {
             judge = engine.judgeFilmNoteOn(midiInt, velInt, lastFilmSnapshot.transportBeat, lastFilmSnapshot.bpm, FILM_HIT_WINDOW_MS);
             viewAfter = engine.getViewState();
