@@ -71,32 +71,24 @@ export function computeTaskResult(
     correctSteps = engineStats.completedSteps;
     totalExpectedNotes = engineStats.totalExpectedNotes;
 
-    // correctNotes: for completed steps, ALL expected notes were satisfied by definition
-    // (engine only advances when chordNotes.every(m => stepState.has(m))).
-    // For incomplete/partial steps, count unique expected midis with at least one success.
-    const stepExpected = new Map<number, Set<number>>();
+    // correctNotes: count unique successful midi values per step.
+    // We use a.midi (actual played note) NOT a.expected, because V2 engine logs
+    // expected=chordNotes[0] for ALL notes in a chord (bug in logAttempt),
+    // making a.expected unreliable for counting distinct notes.
+    // For completed steps, all chord notes were hit (engine invariant),
+    // so unique successful midis = chord size. For partial steps, it reflects
+    // only the notes actually hit.
+    const stepSuccessMidis = new Map<number, Set<number>>();
     for (const a of attempts) {
-      if (!stepExpected.has(a.stepIndex)) stepExpected.set(a.stepIndex, new Set());
-      const expected = Array.isArray(a.expected) ? a.expected : [a.expected];
-      expected.forEach(e => stepExpected.get(a.stepIndex)!.add(e));
-    }
-
-    let cn = 0;
-    for (const [si, expectedSet] of stepExpected) {
-      if (si < correctSteps) {
-        // Completed step: all expected notes are correct by engine invariant
-        cn += expectedSet.size;
-      } else {
-        // Partial/incomplete step: count unique expected midis with success
-        const successMidis = new Set<number>();
-        for (const a of attempts) {
-          if (a.stepIndex === si && a.success) {
-            const midis = Array.isArray(a.midi) ? a.midi : [a.midi];
-            midis.forEach(m => successMidis.add(m));
-          }
-        }
-        cn += Array.from(expectedSet).filter(e => successMidis.has(e)).length;
+      if (a.success) {
+        if (!stepSuccessMidis.has(a.stepIndex)) stepSuccessMidis.set(a.stepIndex, new Set());
+        const midis = Array.isArray(a.midi) ? a.midi : [a.midi];
+        midis.forEach(m => stepSuccessMidis.get(a.stepIndex)!.add(m));
       }
+    }
+    let cn = 0;
+    for (const [, midis] of stepSuccessMidis) {
+      cn += midis.size;
     }
     correctNotes = cn;
   } else if (version === "V2") {
