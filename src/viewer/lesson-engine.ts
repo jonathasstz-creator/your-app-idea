@@ -580,6 +580,13 @@ class LessonEngineV2 implements LessonEngineApi {
     this.activeStep = null;
     this.attemptLog = [];
     this.stepStartTime = Date.now();
+    this.stepQualityState = createStepQualityState();
+    this.stepQualities = [];
+  }
+
+  /** Enable step quality streak (call before loadLesson or after reset). */
+  setUseStepQuality(enabled: boolean) {
+    this.useStepQuality = enabled;
   }
 
   forceEnd() {
