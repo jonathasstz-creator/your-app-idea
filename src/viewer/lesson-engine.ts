@@ -887,14 +887,36 @@ class LessonEngineV2 implements LessonEngineApi {
     });
 
     if (status === 'HIT') {
-      this.streak += 1;
-      this.bestStreak = Math.max(this.bestStreak, this.streak);
       this.score += 1;
+
+      if (this.useStepQuality) {
+        // Quality-based streak
+        const quality = classifyStepQuality(
+          this.stepQualityState.hardErrorCount,
+          this.stepQualityState.softErrorCount
+        );
+        this.stepQualityState.quality = quality;
+        this.stepQualities.push(quality);
+        const delta = computeStreakDelta(quality, this.streak);
+        this.streak = Math.max(0, this.streak + delta);
+      } else {
+        // Legacy: streak increments on every HIT
+        this.streak += 1;
+      }
+
+      this.bestStreak = Math.max(this.bestStreak, this.streak);
       this.currentStep += 1;
       this.stepState.clear();
+      this.stepQualityState = createStepQualityState();
     } else {
-      this.streak = 0;
+      if (!this.useStepQuality) {
+        // Legacy: MISS resets streak immediately
+        this.streak = 0;
+      }
+      // With step quality, streak is only affected at step completion or
+      // when HARD_ERROR_BREAK_THRESHOLD is exceeded (handled in onMidiInput)
       this.stepState.clear();
+      this.stepQualityState = createStepQualityState();
     }
 
     this.lastResult = status;
