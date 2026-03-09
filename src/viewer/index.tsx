@@ -47,6 +47,7 @@ import { featureFlags } from './feature-flags/store';
 import { createRemoteFlagProvider } from './feature-flags/providers/remote';
 import { FeatureFlags } from './feature-flags/types';
 import { TrailNavigator } from './components/TrailNavigator';
+import { StepQualityBadgeController, NoteFeedbackController, ChordClosureEffect } from './step-quality-ui';
 
 console.log('[INIT] ✅ All imports loaded successfully!');
 
@@ -484,6 +485,18 @@ const init = async () => {
     // --- Feature Flags ---
     await featureFlags.init(createRemoteFlagProvider());
     featureFlagSnapshot = featureFlags.snapshot();
+
+    // PR2: Step Quality UX controllers (only instantiated when flag is on)
+    let qualityBadge: StepQualityBadgeController | null = null;
+    let noteFeedbackCtrl: NoteFeedbackController | null = null;
+    let chordClosure: ChordClosureEffect | null = null;
+    let chordHitCount = 0;
+
+    if (featureFlagSnapshot.showStepQualityFeedback) {
+      qualityBadge = new StepQualityBadgeController();
+      noteFeedbackCtrl = new NoteFeedbackController();
+      chordClosure = new ChordClosureEffect();
+    }
 
     // --- Helper for UI State ---
     let lastTransportState = { playing: false, visible: false, mode: "" as string };
@@ -1372,6 +1385,11 @@ const init = async () => {
         engine.forceEnd();
         filmEnded = false;
         filmHudFlash = null;
+        // PR2: Clear step quality UI
+        qualityBadge?.clear();
+        noteFeedbackCtrl?.clear();
+        chordClosure?.clear();
+        chordHitCount = 0;
         ui.updateHud({ step: 0, total: totalSteps ?? null, status: "RESET", scoreTotal: 0, streak: 0, bestStreak: 0 });
     };
 
@@ -1608,6 +1626,10 @@ const init = async () => {
                     .map(({ step }) => step);
                 lessonSteps = orderedSteps;
                 engine = createEngineV2();
+                // PR2: Wire step quality flag from feature flags into engine
+                if (featureFlagSnapshot.useStepQualityStreak) {
+                    engine.setUseStepQuality(true);
+                }
                 engine.setTimer(lessonTimer); // 🔒 wire timer so forceEnd() stops the HUD interval
                 sessionController = new LessonSessionController({ timer: lessonTimer, frameLoop: transportClient, engine });
                 setupEngineEndCallback(); // PR2: Setup endscreen callback
@@ -1785,6 +1807,43 @@ const init = async () => {
             }
             // Force render update immediately (includes cursor update)
             renderView(viewAfter);
+
+            // PR2: Step Quality visual feedback (WAIT mode, V2 only)
+            if (featureFlagSnapshot.showStepQualityFeedback && currentSchemaVersion === 2) {
+                const stepAdvanced = viewAfter.currentStep > viewBefore.currentStep;
+
+                if (stepAdvanced) {
+                    // Step completed
+                    const chordSize = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
+                    chordHitCount = 0;
+
+                    if (chordSize > 1) {
+                        chordClosure?.trigger();
+                        noteFeedbackCtrl?.showChordComplete();
+                    }
+
+                    // Quality badge (only when step quality tracking is active)
+                    if (featureFlagSnapshot.useStepQualityStreak) {
+                        const qualities = engine.getStepQualities();
+                        const lastQ = qualities[qualities.length - 1];
+                        if (lastQ) qualityBadge?.show(lastQ);
+                    }
+                } else if (res?.result === 'HIT') {
+                    // Partial chord hit
+                    chordHitCount += 1;
+                    const chordTotal = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
+                    if (chordTotal > 1) {
+                        noteFeedbackCtrl?.showPartialHit(chordHitCount, chordTotal);
+                    }
+                } else if (res?.result === 'MISS') {
+                    // Wrong note
+                    chordHitCount = 0;
+                    noteFeedbackCtrl?.showWrongNote();
+                } else if (res?.result === 'NONE' && isOn) {
+                    // Duplicate note
+                    noteFeedbackCtrl?.showDuplicate();
+                }
+            }
         } else if (practiceMode === "FILM" && lastFilmSnapshot) {
             judge = engine.judgeFilmNoteOn(midiInt, velInt, lastFilmSnapshot.transportBeat, lastFilmSnapshot.bpm, FILM_HIT_WINDOW_MS);
             viewAfter = engine.getViewState();
