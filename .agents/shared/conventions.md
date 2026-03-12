@@ -55,6 +55,44 @@ requires_review_from:
 9. Beat-to-X mapping preserva monotonicidade
 10. Feature nova = feature flag
 
+### TDD and Anti-Regression Rules
+1. Bug fix sem teste anti-regressão precisa de justificativa explícita
+2. Mudança em entrypoint/wiring → considerar teste de integração
+3. Mudança em feature flags → testar matrix de combinações
+4. Mudança em guards → testar branch de bloqueio
+5. Unit test sozinho não basta se o bug nasceu no wiring
+6. Testes devem cobrir comportamento observável, não detalhes internos
+7. Implementador não encerra sem considerar cobertura de teste
+8. Reviewer audita qualidade de testes, não só existência
+
+### Agent Handoff — Bug Fix Flow
+```
+bug-investigator → causa raiz + classificação
+  → orchestrator → escopo + delegação
+    → implementer → patch mínimo
+      → tdd-engineer → testes anti-regressão
+        → regression-auditor → validação de blindagem
+          → code-reviewer → qualidade final (código + testes)
+```
+
+### Template para novos agentes de teste
+```yaml
+---
+name: kebab-case
+description: Uma frase
+domain: quality
+triggers:
+  - quando este agente é acionado
+capabilities:
+  - o que ele faz
+restricted_files:
+  - viewer/ (raiz)
+  - src/integrations/supabase/
+requires_review_from:
+  - quem valida o output
+---
+```
+
 ### Schemas
 - **V1:** Monofônico. `LessonNote` com `midi: number`. 1 nota por step.
 - **V2:** Polifônico. `LessonStepV2` com `notes: number[]`. Acordes.

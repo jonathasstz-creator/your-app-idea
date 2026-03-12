@@ -46,6 +46,8 @@ Tarefa recebida
 | Mudança em `src/viewer/` (geral) | `viewer-engineer` |
 | Mudança em catálogo/adapter/lessons.json | `catalog-engineer` |
 | Bug ou regressão | `bug-investigator` |
+| Bug corrigido sem teste anti-regressão | `tdd-engineer` |
+| Validação de proteção anti-regressão | `regression-auditor` |
 | Review de diff/PR | `code-reviewer` |
 | Mudança em auth/secrets/storage | `security-reviewer` |
 | Mudança em schema Supabase | `database-engineer` |
@@ -53,6 +55,14 @@ Tarefa recebida
 | Documentação | `docs-writer` |
 | Decisão arquitetural | `architecture-reviewer` |
 | Qualquer mudança em `index.tsx` | `repo-guardian` (review obrigatório) |
+
+### Delegação TDD (obrigatória para bug fixes)
+```
+Após bug fix entregue:
+  → Se implementador incluiu teste → regression-auditor valida
+  → Se implementador não incluiu teste → tdd-engineer escreve → regression-auditor valida
+  → code-reviewer valida qualidade final (código + testes)
+```
 
 ## O que o orchestrator NÃO faz
 - ❌ Não implementa código
