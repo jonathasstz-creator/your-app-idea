@@ -1,5 +1,45 @@
 # Changelog
 
+## [2026-03-12] - Fix: Step Quality UX/HUD não aparece com flags ativadas
+
+### Bug
+Feedback visual do Step Quality (badge PERFECT/GREAT/GOOD/RECOVERED, note feedback ✓/✗/♪, chord closure pulse) não aparecia mesmo com `showStepQualityFeedback` e `useStepQualityStreak` ativadas via console ou localStorage.
+
+### Causa raiz
+Dois problemas de wiring/lifecycle em `src/viewer/index.tsx`:
+
+1. **Controllers condicionais:** `StepQualityBadgeController`, `NoteFeedbackController` e `ChordClosureEffect` eram instanciados apenas se as flags estivessem `true` no momento do boot. Se ativadas depois (runtime ou localStorage + reload), os controllers permaneciam `null`.
+
+2. **Snapshot congelado:** `featureFlagSnapshot` era capturado uma vez durante `init()` e nunca atualizado. Chamadas a `window.__flags.set()` alteravam o store mas o handler MIDI continuava lendo o snapshot antigo.
+
+### Patch
+- Controllers de Step Quality agora são instanciados **sempre** no boot, independente das flags. Eles toleram elementos DOM ausentes (guard `if (!this.el) return`).
+- Adicionado `featureFlags.subscribe(next => { featureFlagSnapshot = next })` para manter o snapshot sincronizado com mudanças de flag em runtime.
+- Adicionados logs diagnósticos mínimos (`console.info` no boot, `console.debug` no handler).
+
+### Impacto
+- Feedback visual de Step Quality agora funciona corretamente em lições V2 WAIT com flags ativas.
+- `window.__flags.set()` agora reflete imediatamente no comportamento do handler MIDI.
+- Nenhuma mudança em engine, scoring, stars, high score, backend ou schema.
+- V1 e FILM mode continuam fora do escopo por design.
+- Comportamento legado (flags off) preservado integralmente.
+
+### Risco residual
+- `console.debug` no handler MIDI pode poluir console em produção se as flags estiverem ativas. Recomendado mover para guard `import.meta.env.DEV` após validação.
+- `featureFlags.subscribe()` não tem `unsubscribe()` chamado — aceitável pois `init()` roda uma vez por vida da página.
+
+### Arquivos modificados
+- `src/viewer/index.tsx`
+
+### Documentação atualizada
+- `AGENTS.md` — seções de Step Quality, Feature Flags, Armadilhas
+- `CLAUDE.md` (novo) — contexto operacional, paths canônicos, guards, Step Quality UX real
+- `RUNBOOK.md` (novo) — diagnóstico completo de "HUD não aparece"
+- `COOKBOOK.md` (novo) — receitas de console para flags, DOM, debugging
+- `CHANGELOG.md`
+
+---
+
 ## [2026-03-08] - POST /complete fire-and-forget no write path
 
 ### Resumo
