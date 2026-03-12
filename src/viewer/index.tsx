@@ -486,17 +486,20 @@ const init = async () => {
     await featureFlags.init(createRemoteFlagProvider());
     featureFlagSnapshot = featureFlags.snapshot();
 
-    // PR2: Step Quality UX controllers (only instantiated when flag is on)
-    let qualityBadge: StepQualityBadgeController | null = null;
-    let noteFeedbackCtrl: NoteFeedbackController | null = null;
-    let chordClosure: ChordClosureEffect | null = null;
-    let chordHitCount = 0;
+    // Keep featureFlagSnapshot in sync with runtime changes (window.__flags.set)
+    featureFlags.subscribe((next) => { featureFlagSnapshot = next; });
 
-    if (featureFlagSnapshot.showStepQualityFeedback) {
-      qualityBadge = new StepQualityBadgeController();
-      noteFeedbackCtrl = new NoteFeedbackController();
-      chordClosure = new ChordClosureEffect();
-    }
+    console.info('[StepQuality] flags after init:', {
+      showStepQualityFeedback: featureFlagSnapshot.showStepQualityFeedback,
+      useStepQualityStreak: featureFlagSnapshot.useStepQualityStreak,
+    });
+
+    // PR2: Step Quality UX controllers — always create (they're lightweight, no-op with null el).
+    // The MIDI handler gates usage via featureFlagSnapshot checks.
+    let chordHitCount = 0;
+    const qualityBadge = new StepQualityBadgeController();
+    const noteFeedbackCtrl = new NoteFeedbackController();
+    const chordClosure = new ChordClosureEffect();
 
     // --- Helper for UI State ---
     let lastTransportState = { playing: false, visible: false, mode: "" as string };
