@@ -386,6 +386,8 @@ featureFlags.init(remoteProvider?)
 
 ### index.tsx é um god file
 - `src/viewer/index.tsx` tem ~2800 linhas com `@ts-nocheck`. Modificar com extremo cuidado. Preferir extrair lógica para módulos dedicados antes de adicionar funcionalidade aqui.
+- **Bugs de wiring neste arquivo não são detectáveis por testes unitários.** Se algo "deveria funcionar" mas não aparece na UI, inspecionar `index.tsx` primeiro: guards, condicionais de boot, snapshots congelados, controllers não instanciados.
+- **Diagnóstico rápido para bugs de UI/flag:** verificar nesta ordem: (1) flag está ativa? (`window.__flags.snapshot()`), (2) elemento DOM existe? (`document.getElementById(...)`), (3) controller foi instanciado? (logs de boot), (4) guard de schema/mode está bloqueando? (logs de MIDI handler).
 
 ### Auth é non-blocking
 - `ensureAuthenticated()` resolve silenciosamente se não houver config ou sessão. O app continua normalmente. Isso é **intencional** — permite funcionamento offline do catálogo e navegação.
