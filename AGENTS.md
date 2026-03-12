@@ -494,6 +494,7 @@ featureFlags.init(remoteProvider?)
 - ✅ Design system CSS consolidado em `src/viewer/styles.css` (neon glassmorphism, variáveis CSS, responsivo)
 - ✅ POST `/v1/sessions/{id}/complete` fire-and-forget implementado no write path (`index.tsx`)
 - ✅ Step Quality System (PR1): classificação PERFECT/GREAT/GOOD/RECOVERED, streak por qualidade de step, feature flag `useStepQualityStreak`
+- ✅ Step Quality UX/HUD (PR2): controllers visuais (badge, note feedback, chord closure), feature flag `showStepQualityFeedback`, wiring corrigido para lifecycle reativo
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.
