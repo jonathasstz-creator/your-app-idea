@@ -447,7 +447,9 @@ featureFlags.init(remoteProvider?)
 - O cache de analytics é isolado por `sub` do JWT. Se o sub mudar, cache antigo é descartado.
 
 ### Feature flags
-- Flags atuais: `showSheetMusic`, `showFallingNotes`, `showNewCurriculum`, `useWebSocket`.
+- Flags atuais: `showSheetMusic`, `showFallingNotes`, `showNewCurriculum`, `showIntermediateCurriculum`, `useWebSocket`, `useStepQualityStreak`, `showStepQualityFeedback`.
+- Precedência: `DEFAULT_FLAGS` → localStorage (`viewer:featureFlags:v1`) → remote provider → runtime (`window.__flags.set(...)`).
+- `featureFlagSnapshot` em `index.tsx` é mantido atualizado via `featureFlags.subscribe()`. Mudanças em runtime refletem imediatamente no handler MIDI.
 - Podem ser alteradas em runtime via `window.__flags.set(...)` (apenas em DEV).
 
 ---
