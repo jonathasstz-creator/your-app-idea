@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-03-08 — POST /v1/sessions/{id}/complete fire-and-forget implementado no write path.
+> **Última atualização:** 2026-03-12 — Step Quality UX/HUD fix: controllers permanentes + flag snapshot reativo.
 
 ---
 
