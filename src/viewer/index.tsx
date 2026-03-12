@@ -1813,6 +1813,7 @@ const init = async () => {
 
             // PR2: Step Quality visual feedback (WAIT mode, V2 only)
             if (featureFlagSnapshot.showStepQualityFeedback && currentSchemaVersion === 2) {
+                console.debug('[StepQuality] feedback block entered', { step: viewBefore.currentStep, schemaV: currentSchemaVersion });
                 const stepAdvanced = viewAfter.currentStep > viewBefore.currentStep;
 
                 if (stepAdvanced) {
