@@ -1,5 +1,27 @@
 # Changelog
 
+## [2026-03-12] - Process: TDD and Anti-Regression Architecture
+
+### Mudança
+Reestruturação da arquitetura de agentes para incorporar TDD, anti-regressão e quality gates como parte formal do processo.
+
+### O que mudou
+- **AGENTS.md**: Nova seção `8.1 TDD and Anti-Regression Policy` com tipos de teste, quality gates, handoff entre agentes.
+- **tdd-engineer.md** (novo): Agente dedicado a testes anti-regressão de alto valor.
+- **regression-auditor.md** (novo): Agente que valida se testes realmente blindam contra reabertura.
+- **test-engineer.md** (atualizado): Diferenciação clara vs tdd-engineer, tabela de módulos atualizada.
+- **code-reviewer.md** (atualizado): Agora audita qualidade de testes, pode bloquear por falta de teste.
+- **bug-investigator.md** (atualizado): Classificação de tipos de bug, handoff obrigatório para tdd-engineer.
+- **orchestrator.md** (atualizado): Delegação TDD explícita na tabela de sinais.
+- **conventions.md** (atualizado): Regras de TDD, template para novos agentes de teste, handoff flow.
+
+### Impacto
+- Anti-regressão virou parte formal do processo, não pós-pensamento.
+- Quality gates documentados: bug fix sem teste precisa de justificativa.
+- Fluxo de handoff entre agentes definido: investigar → implementar → testar → auditar → revisar.
+
+---
+
 ## [2026-03-12] - Fix: Step Quality UX/HUD não aparece com flags ativadas
 
 ### Bug

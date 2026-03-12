@@ -347,7 +347,77 @@ featureFlags.init(remoteProvider?)
 2. **Isolar:** Reproduzir com teste unitário.
 3. **Planejar:** Identificar ponto de entrada e consumidores afetados.
 4. **Implementar:** Fix mínimo + teste.
-5. **Validar:** `npx vitest run` (todos os testes devem passar).
+5. **Proteger:** Adicionar teste anti-regressão que falha sem o fix e passa com ele.
+6. **Validar:** `npx vitest run` (todos os testes devem passar).
+
+---
+
+## 8.1 TDD and Anti-Regression Policy
+
+### Princípios
+
+1. **Anti-regressão é parte do processo, não pós-pensamento.** Bug corrigido sem teste anti-regressão precisa de justificativa explícita.
+2. **Nem todo bug pede refactor; muitos pedem teste cirúrgico.** O objetivo é impedir que o mesmo bug reabra, não reescrever o sistema.
+3. **Unit test sozinho não substitui teste de integração/wiring.** Se o bug nasceu na camada de wiring (ex: `index.tsx`), o teste precisa simular o wiring, não só o módulo isolado.
+4. **Testar comportamento observável, não detalhes internos.** Acoplamento a implementação gera testes frágeis.
+5. **Testes verdes não bastam se a área alterada não está coberta.** A suíte pode estar 100% verde e o bug existir em camada sem cobertura.
+
+### Quando testes são obrigatórios
+
+| Situação | Tipo de teste mínimo |
+|----------|---------------------|
+| Mudança em módulo crítico (`lesson-engine`, `auth-storage`, `analytics-client`, `beat-to-x-mapping`, `lesson-transposer`, `catalog-service`, `taskCompletion`) | Unit test |
+| Bug fix em qualquer módulo | Anti-regression test (deve falhar sem o fix) |
+| Mudança em feature flags | Teste de combinação de flags (ON/OFF matrix) |
+| Mudança em guards de `index.tsx` | Teste de wiring simulando o contrato do handler |
+| Mudança em lifecycle/boot | Teste de inicialização com flags em estados diferentes |
+| Nova feature experimental | Teste de comportamento + flag gate |
+
+### Tipos de teste no projeto
+
+| Tipo | Quando usar | Exemplo |
+|------|------------|---------|
+| **Unit test** | Lógica pura sem dependência de DOM/wiring | `lesson-engine-invariants.test.ts` |
+| **Integration test** | Múltiplos módulos colaborando | `lesson-engine-timer-integration.test.ts` |
+| **Anti-regression test** | Reproduzir bug específico e impedir reabertura | `step-quality-wiring-regression.test.ts` |
+| **Wiring test** | Simular contrato do entrypoint/handler sem importar `index.tsx` | `step-quality-wiring-regression.test.ts` (guard matrix) |
+| **Runtime test** | Validar comportamento com DOM simulado + fake timers | `step-quality-ui.test.ts` |
+
+### Áreas de risco elevado (exigem atenção extra)
+
+- **Entrypoints** (`index.tsx`): god file com closures, guards, snapshots. Bugs aqui não são detectáveis por unit tests isolados.
+- **Feature flags**: combinações de flags podem criar branches não testados. Toda nova flag deve ter teste de matrix.
+- **UI wiring**: controllers criados condicionalmente, snapshots congelados, subscribe esquecido.
+- **Runtime guards**: `shouldStartTimer`, `completeSent`, `isEnded`, schema/mode checks.
+- **State/lifecycle**: boot, reset, destroy, re-init, timer cleanup.
+
+### Quality Gates
+
+Antes de considerar uma mudança "pronta":
+
+1. **Bug fix → teste anti-regressão existe?** Se não, justificar por que é dispensável.
+2. **Mudança em entrypoint/wiring → integração considerada?** Unit test isolado pode não capturar o bug.
+3. **Mudança em feature flags → matrix testada?** Pelo menos: ambas OFF, ambas ON, cada uma isolada.
+4. **Mudança em guard → branch crítico testado?** O guard que bloqueia execução precisa de teste que prove que bloqueia.
+5. **Mudança em lifecycle → cleanup testado?** destroy/reset com timer pendente não pode crashar.
+6. **Suíte verde → área alterada está coberta?** Verde ≠ seguro se a área não tem teste.
+
+### Handoff entre agentes
+
+```
+bug-investigator → identifica causa raiz, propõe fix mínimo
+  → orchestrator → define escopo, delega implementação
+    → implementer (viewer-engineer, lesson-engine-specialist, etc.) → aplica patch
+      → tdd-engineer → escreve testes anti-regressão
+        → regression-auditor → valida que testes realmente blindam a regressão
+          → code-reviewer → valida qualidade final (código + testes)
+```
+
+Regras de handoff:
+- Implementador **não encerra** sem considerar cobertura de teste.
+- Se o implementador também escreve o teste, `regression-auditor` valida independentemente.
+- `code-reviewer` cobra qualidade de testes, não só qualidade de código.
+- Bug corrigido sem teste → `code-reviewer` pode bloquear.
 
 ---
 
