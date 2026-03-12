@@ -1,0 +1,104 @@
+# RUNBOOK.md
+
+Runbooks de diagnóstico para problemas operacionais conhecidos.
+
+---
+
+## Runbook — Step Quality UX/HUD não aparece
+
+### Sintomas
+
+- Ativei `showStepQualityFeedback` e/ou `useStepQualityStreak` mas nenhum feedback visual aparece.
+- Nenhum badge (Perfeito/Ótimo/Boa/Recuperou) aparece após completar um step.
+- Nenhum feedback de nota (✓, ✗, ♪ x/y) aparece durante a prática.
+- Console não mostra logs de Step Quality.
+
+### Causas prováveis (ordem de probabilidade)
+
+1. Lição é V1 (monofônica) — Step Quality só funciona em V2
+2. Modo é FILM — Step Quality só funciona em WAIT
+3. Flag `showStepQualityFeedback` não está ativa
+4. Flag `useStepQualityStreak` não está ativa
+5. Elemento DOM (`#hud-quality-badge`, `#judge-feedback`) não existe no HTML
+6. Controller não foi instanciado (regressão no boot de index.tsx)
+7. `featureFlagSnapshot` não está sendo atualizado (regressão no subscribe)
+
+### Checklist de diagnóstico
+
+Execute no console do browser, nesta ordem:
+
+#### 1. Verificar flags efetivas
+
+```js
+window.__flags.snapshot()
+// Esperado: { showStepQualityFeedback: true, useStepQualityStreak: true, ... }
+```
+
+Se as flags estão `false`, ative:
+
+```js
+window.__flags.set('showStepQualityFeedback', true);
+window.__flags.set('useStepQualityStreak', true);
+```
+
+#### 2. Verificar elementos DOM
+
+```js
+document.getElementById('hud-quality-badge')   // Deve retornar HTMLElement
+document.getElementById('judge-feedback')       // Deve retornar HTMLElement
+document.getElementById('hud-step')             // Deve retornar HTMLElement
+```
+
+Se retornar `null`, o HTML do trainer não inclui esses elementos.
+
+#### 3. Verificar versão do schema
+
+Procure no console por:
+- `[v2:polyphonic] lesson loaded` → V2 ✅
+- Ausência desse log → provavelmente V1
+
+Se V1, Step Quality **não se aplica** por design.
+
+#### 4. Verificar modo
+
+O modo deve ser WAIT. FILM usa streak legado.
+
+#### 5. Verificar logs de boot
+
+Procure no console por:
+- `[StepQuality] boot flags:` → confirma estado das flags no init
+- `[StepQuality] flag snapshot updated` → confirma que subscribe está ativo
+
+#### 6. Verificar logs do handler MIDI
+
+Ao tocar uma nota em lição V2 WAIT com flags ativas, procure:
+- `[StepQuality] executing feedback block` → wiring está funcionando
+- Ausência desse log → o branch não está sendo alcançado
+
+### Como distinguir o problema
+
+| Resultado | Diagnóstico |
+|-----------|-------------|
+| Flags estão `false` | Problema de flag. Ative manualmente. |
+| Flags `true` mas DOM `null` | Problema de HTML/template. |
+| Flags `true`, DOM existe, sem log de feedback | Problema de guard (V1, FILM, ou engine null). |
+| Flags `true`, DOM existe, log de feedback presente, mas nada visual | Problema de CSS ou controller. |
+| Log "[v2:polyphonic]" ausente | Lição é V1. Escolha uma lição V2 (caps 31+). |
+
+### Resolução conhecida
+
+**Se o problema for controllers condicionais ou snapshot congelado** (bug original corrigido em 2026-03-12):
+- Controllers devem ser instanciados incondicionalmente no boot
+- `featureFlags.subscribe()` deve manter `featureFlagSnapshot` atualizado
+- Verificar se não houve regressão removendo o subscribe ou adicionando guard no construtor
+
+### Validação pós-fix
+
+1. `window.__flags.set('showStepQualityFeedback', true)` — sem reload
+2. `window.__flags.set('useStepQualityStreak', true)` — sem reload
+3. Abrir lição V2 (capítulos 31+)
+4. Confirmar WAIT mode
+5. Tocar nota errada → deve aparecer ✗
+6. Tocar nota correta parcial → deve aparecer ♪ 1/2
+7. Completar acorde → deve aparecer ✓ + badge de qualidade
+8. Repetir nota já tocada → flash sutil de duplicata

@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-03-08 — POST /v1/sessions/{id}/complete fire-and-forget implementado no write path.
+> **Última atualização:** 2026-03-12 — Step Quality UX/HUD fix: controllers permanentes + flag snapshot reativo.
 
 ---
 
@@ -386,6 +386,8 @@ featureFlags.init(remoteProvider?)
 
 ### index.tsx é um god file
 - `src/viewer/index.tsx` tem ~2800 linhas com `@ts-nocheck`. Modificar com extremo cuidado. Preferir extrair lógica para módulos dedicados antes de adicionar funcionalidade aqui.
+- **Bugs de wiring neste arquivo não são detectáveis por testes unitários.** Se algo "deveria funcionar" mas não aparece na UI, inspecionar `index.tsx` primeiro: guards, condicionais de boot, snapshots congelados, controllers não instanciados.
+- **Diagnóstico rápido para bugs de UI/flag:** verificar nesta ordem: (1) flag está ativa? (`window.__flags.snapshot()`), (2) elemento DOM existe? (`document.getElementById(...)`), (3) controller foi instanciado? (logs de boot), (4) guard de schema/mode está bloqueando? (logs de MIDI handler).
 
 ### Auth é non-blocking
 - `ensureAuthenticated()` resolve silenciosamente se não houver config ou sessão. O app continua normalmente. Isso é **intencional** — permite funcionamento offline do catálogo e navegação.
@@ -404,9 +406,11 @@ featureFlags.init(remoteProvider?)
 - Se uma nota errada for tocada durante um chord parcial, é MISS e reseta o `stepState`.
 - Duplicatas de nota são ignoradas (não contam 2x).
 
-### Step Quality System (PR1 — feature flag)
-- **Escopo:** Engine V2, modo WAIT polifônico apenas. FILM mode **não usa** Step Quality (usa streak legado).
-- **Feature flag:** `useStepQualityStreak` (default: `false`). Com flag OFF, comportamento legado preservado integralmente.
+### Step Quality System (PR1 engine + PR2 UX/HUD)
+- **Escopo:** Engine V2, modo WAIT polifônico apenas. FILM mode **não usa** Step Quality (usa streak legado). V1 implementa stubs (no-op).
+- **Feature flags:**
+  - `useStepQualityStreak` (default: `false`) — ativa scoring por qualidade de step no engine.
+  - `showStepQualityFeedback` (default: `false`) — ativa feedback visual no HUD (badge, note feedback, chord closure).
 - **Classificações por step completado:**
   - `PERFECT` — 0 hard errors, 0 soft errors
   - `GREAT` — 0 hard errors, ≤1 soft error
@@ -419,9 +423,13 @@ featureFlags.init(remoteProvider?)
   - RECOVERED → streak reseta a 0
   - Mid-step: se `hardErrorCount ≥ HARD_ERROR_BREAK_THRESHOLD` (3), streak quebra imediatamente
 - **Estado:** `stepQualities` é array local do engine, não persiste em backend.
-- **Interface:** `setUseStepQuality(enabled)` e `getStepQualities()` são obrigatórios na `LessonEngineApi`. V1 implementa stubs (no-op).
-- **Arquivos:** `src/viewer/types/step-quality.ts`, integração em `src/viewer/lesson-engine.ts`.
-- **Próximo:** PR2 focará em feedback visual por nota e badge no HUD.
+- **Interface:** `setUseStepQuality(enabled)` e `getStepQualities()` são obrigatórios na `LessonEngineApi`.
+- **Controllers de UI:** `StepQualityBadgeController`, `NoteFeedbackController`, `ChordClosureEffect` (em `src/viewer/step-quality-ui.ts`).
+  - Instanciados **sempre** no boot, independente do estado das flags (tolerantes a elemento DOM ausente).
+  - Executam feedback apenas quando `featureFlagSnapshot.showStepQualityFeedback === true` no handler MIDI.
+- **DOM elements:** `#hud-quality-badge`, `#judge-feedback`, `#hud-step`.
+- **Armadilha histórica (corrigida 2026-03-12):** controllers eram criados condicionalmente no boot e `featureFlagSnapshot` era congelado no init. Mudanças de flag em runtime não tinham efeito. Fix: criação incondicional + `featureFlags.subscribe()` para manter snapshot vivo.
+- **Arquivos:** `src/viewer/types/step-quality.ts`, `src/viewer/step-quality-ui.ts`, `src/viewer/lesson-engine.ts`, wiring em `src/viewer/index.tsx`.
 
 ### Beat-to-X mapping
 - Se a taxa de match entre notas OSMD e steps for < 80%, fallbacks são acionados automaticamente.
@@ -439,7 +447,9 @@ featureFlags.init(remoteProvider?)
 - O cache de analytics é isolado por `sub` do JWT. Se o sub mudar, cache antigo é descartado.
 
 ### Feature flags
-- Flags atuais: `showSheetMusic`, `showFallingNotes`, `showNewCurriculum`, `useWebSocket`.
+- Flags atuais: `showSheetMusic`, `showFallingNotes`, `showNewCurriculum`, `showIntermediateCurriculum`, `useWebSocket`, `useStepQualityStreak`, `showStepQualityFeedback`.
+- Precedência: `DEFAULT_FLAGS` → localStorage (`viewer:featureFlags:v1`) → remote provider → runtime (`window.__flags.set(...)`).
+- `featureFlagSnapshot` em `index.tsx` é mantido atualizado via `featureFlags.subscribe()`. Mudanças em runtime refletem imediatamente no handler MIDI.
 - Podem ser alteradas em runtime via `window.__flags.set(...)` (apenas em DEV).
 
 ---
@@ -484,6 +494,7 @@ featureFlags.init(remoteProvider?)
 - ✅ Design system CSS consolidado em `src/viewer/styles.css` (neon glassmorphism, variáveis CSS, responsivo)
 - ✅ POST `/v1/sessions/{id}/complete` fire-and-forget implementado no write path (`index.tsx`)
 - ✅ Step Quality System (PR1): classificação PERFECT/GREAT/GOOD/RECOVERED, streak por qualidade de step, feature flag `useStepQualityStreak`
+- ✅ Step Quality UX/HUD (PR2): controllers visuais (badge, note feedback, chord closure), feature flag `showStepQualityFeedback`, wiring corrigido para lifecycle reativo
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.
