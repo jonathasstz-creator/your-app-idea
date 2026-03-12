@@ -406,9 +406,11 @@ featureFlags.init(remoteProvider?)
 - Se uma nota errada for tocada durante um chord parcial, é MISS e reseta o `stepState`.
 - Duplicatas de nota são ignoradas (não contam 2x).
 
-### Step Quality System (PR1 — feature flag)
-- **Escopo:** Engine V2, modo WAIT polifônico apenas. FILM mode **não usa** Step Quality (usa streak legado).
-- **Feature flag:** `useStepQualityStreak` (default: `false`). Com flag OFF, comportamento legado preservado integralmente.
+### Step Quality System (PR1 engine + PR2 UX/HUD)
+- **Escopo:** Engine V2, modo WAIT polifônico apenas. FILM mode **não usa** Step Quality (usa streak legado). V1 implementa stubs (no-op).
+- **Feature flags:**
+  - `useStepQualityStreak` (default: `false`) — ativa scoring por qualidade de step no engine.
+  - `showStepQualityFeedback` (default: `false`) — ativa feedback visual no HUD (badge, note feedback, chord closure).
 - **Classificações por step completado:**
   - `PERFECT` — 0 hard errors, 0 soft errors
   - `GREAT` — 0 hard errors, ≤1 soft error
@@ -421,9 +423,13 @@ featureFlags.init(remoteProvider?)
   - RECOVERED → streak reseta a 0
   - Mid-step: se `hardErrorCount ≥ HARD_ERROR_BREAK_THRESHOLD` (3), streak quebra imediatamente
 - **Estado:** `stepQualities` é array local do engine, não persiste em backend.
-- **Interface:** `setUseStepQuality(enabled)` e `getStepQualities()` são obrigatórios na `LessonEngineApi`. V1 implementa stubs (no-op).
-- **Arquivos:** `src/viewer/types/step-quality.ts`, integração em `src/viewer/lesson-engine.ts`.
-- **Próximo:** PR2 focará em feedback visual por nota e badge no HUD.
+- **Interface:** `setUseStepQuality(enabled)` e `getStepQualities()` são obrigatórios na `LessonEngineApi`.
+- **Controllers de UI:** `StepQualityBadgeController`, `NoteFeedbackController`, `ChordClosureEffect` (em `src/viewer/step-quality-ui.ts`).
+  - Instanciados **sempre** no boot, independente do estado das flags (tolerantes a elemento DOM ausente).
+  - Executam feedback apenas quando `featureFlagSnapshot.showStepQualityFeedback === true` no handler MIDI.
+- **DOM elements:** `#hud-quality-badge`, `#judge-feedback`, `#hud-step`.
+- **Armadilha histórica (corrigida 2026-03-12):** controllers eram criados condicionalmente no boot e `featureFlagSnapshot` era congelado no init. Mudanças de flag em runtime não tinham efeito. Fix: criação incondicional + `featureFlags.subscribe()` para manter snapshot vivo.
+- **Arquivos:** `src/viewer/types/step-quality.ts`, `src/viewer/step-quality-ui.ts`, `src/viewer/lesson-engine.ts`, wiring em `src/viewer/index.tsx`.
 
 ### Beat-to-X mapping
 - Se a taxa de match entre notas OSMD e steps for < 80%, fallbacks são acionados automaticamente.
