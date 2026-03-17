@@ -2,44 +2,46 @@
  * MIDI Onboarding — Controller
  *
  * Bridges the OnboardingFlow (pure logic) with the WebMidiService and UI.
- * Created once, gated by feature flag. Zero impact when flag is OFF.
+ * Created once per session, gated by feature flag. Zero impact when flag is OFF.
  */
 
 import { OnboardingFlow, OnboardingListener } from './OnboardingFlow';
+import { OnboardingStorage } from './storage';
+import { onboardingAnalytics } from './analytics';
 import type { OnboardingState } from './types';
 import type { WebMidiService, MidiNoteEvent } from '../webmidi-service';
 
 export class MidiOnboardingController {
   private flow: OnboardingFlow;
-  private midiUnsubscribe: (() => void) | null = null;
+  private storage: OnboardingStorage;
   private destroyed = false;
 
-  constructor() {
-    this.flow = new OnboardingFlow();
+  constructor(storage?: OnboardingStorage) {
+    this.storage = storage ?? new OnboardingStorage();
+    this.flow = new OnboardingFlow(this.storage);
   }
 
   /** Wire to MIDI service for note events */
   attachMidi(midiService: WebMidiService): void {
-    // Listen for note events
     const handler = (event: MidiNoteEvent) => {
+      if (this.destroyed) return;
       if (event.type === 'note_on' && event.velocity > 0) {
         this.flow.onMidiNote(event.midi);
       }
     };
     midiService.onNoteEvent(handler);
-    // Store handler ref for potential future cleanup
-    this.midiUnsubscribe = () => {
-      // WebMidiService doesn't expose offNoteEvent — acceptable leak on destroy
-      // since onboarding is created once per session
-    };
 
-    // Listen for connection state
     midiService.onStateChange((state) => {
+      if (this.destroyed) return;
       this.flow.setMidiConnected(state.connected);
     });
   }
 
-  /** Subscribe to flow state changes (for UI rendering) */
+  /** Start the onboarding flow */
+  start(): void {
+    this.flow.start();
+  }
+
   subscribe(fn: OnboardingListener): () => void {
     return this.flow.subscribe(fn);
   }
@@ -64,22 +66,13 @@ export class MidiOnboardingController {
     this.flow.completeCurrentStep();
   }
 
-  /** Check if onboarding should be shown */
-  static shouldShow(flagEnabled: boolean, hasProgress: boolean): boolean {
-    return OnboardingFlow.shouldShow(flagEnabled, hasProgress);
-  }
-
-  /** Check if already completed */
-  static isCompleted(): boolean {
-    return OnboardingFlow.isCompleted();
+  /** Check eligibility */
+  static isEligible(flagEnabled: boolean, hasProgress: boolean): boolean {
+    return OnboardingFlow.isEligible(flagEnabled, hasProgress);
   }
 
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    if (this.midiUnsubscribe) {
-      this.midiUnsubscribe();
-      this.midiUnsubscribe = null;
-    }
   }
 }
