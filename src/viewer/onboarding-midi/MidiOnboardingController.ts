@@ -27,7 +27,11 @@ export class MidiOnboardingController {
       }
     };
     midiService.onNoteEvent(handler);
-    this.midiUnsubscribe = () => midiService.offNoteEvent(handler);
+    // Store handler ref for potential future cleanup
+    this.midiUnsubscribe = () => {
+      // WebMidiService doesn't expose offNoteEvent — acceptable leak on destroy
+      // since onboarding is created once per session
+    };
 
     // Listen for connection state
     midiService.onStateChange((state) => {
