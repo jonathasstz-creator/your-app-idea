@@ -309,10 +309,14 @@ export const TrailNavigator: React.FC<TrailNavigatorProps> = ({
   // Real progress from localStorage (local-first, no backend needed)
   const statsIndex: StatsIndex = useMemo(() => buildStatsIndex(allChapterIds), [allChapterIds]);
 
-  // Find recommended chapter (first non-coming-soon chapter)
+  // Find recommended chapter: first non-completed, non-coming-soon chapter
   const allChapters =
     activeLevel?.modules?.flatMap((m) => m.chapters ?? []) ?? [];
-  const recommended = allChapters.find((ch) => !ch.coming_soon);
+  const recommended = allChapters.find((ch) => {
+    if (ch.coming_soon) return false;
+    const stats = statsIndex.get(ch.chapter_id);
+    return !stats || stats.progress_pct < 100;
+  });
 
   const handleSelectChapter = (chapterId: number, lessonId?: string) => {
     onSelectChapter(chapterId, lessonId);
