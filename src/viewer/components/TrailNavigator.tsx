@@ -1,12 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Trail, TrailChapter, TrailModule, TrailLevel, HandAssignment } from '../catalog/types';
-
-/* ── Stat stub (future: wire to real progress service) ── */
-interface ChapterStats {
-  unlocked: boolean;
-  progress_pct: number;
-}
+import { buildStatsIndex, type ChapterStats } from '../progress-index';
 
 type StatsIndex = Map<number, ChapterStats>;
 
@@ -298,13 +293,30 @@ export const TrailNavigator: React.FC<TrailNavigatorProps> = ({
 
   const activeLevel = levels.find((l) => l.level_id === activeLevelId) ?? levels[0];
 
-  // Stats stub — empty for now, will be wired to progress service
-  const statsIndex: StatsIndex = new Map();
+  // Collect all chapter IDs across all levels for progress lookup
+  const allChapterIds = useMemo(() => {
+    const ids: number[] = [];
+    for (const lvl of levels) {
+      for (const mod of lvl.modules ?? []) {
+        for (const ch of mod.chapters ?? []) {
+          ids.push(ch.chapter_id);
+        }
+      }
+    }
+    return ids;
+  }, [levels]);
 
-  // Find recommended chapter (first non-coming-soon chapter)
+  // Real progress from localStorage (local-first, no backend needed)
+  const statsIndex: StatsIndex = useMemo(() => buildStatsIndex(allChapterIds), [allChapterIds]);
+
+  // Find recommended chapter: first non-completed, non-coming-soon chapter
   const allChapters =
     activeLevel?.modules?.flatMap((m) => m.chapters ?? []) ?? [];
-  const recommended = allChapters.find((ch) => !ch.coming_soon);
+  const recommended = allChapters.find((ch) => {
+    if (ch.coming_soon) return false;
+    const stats = statsIndex.get(ch.chapter_id);
+    return !stats || stats.progress_pct < 100;
+  });
 
   const handleSelectChapter = (chapterId: number, lessonId?: string) => {
     onSelectChapter(chapterId, lessonId);
