@@ -1,14 +1,18 @@
 /**
- * MIDI Onboarding — React UI
+ * MIDI Onboarding — React UI Overlay
  *
  * Full-screen onboarding overlay. Self-contained, no dependency on index.tsx state.
- * Renders the current step with appropriate UX.
+ * Delegates rendering to individual step components.
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { OnboardingState, OnboardingStep } from './types';
 import type { MidiOnboardingController } from './MidiOnboardingController';
+import { MidiConnectionStep } from './steps/MidiConnectionStep';
+import { FirstNotesStep } from './steps/FirstNotesStep';
+import { ProgressIntroStep } from './steps/ProgressIntroStep';
+import { FinishStep } from './steps/FinishStep';
 
 interface MidiOnboardingOverlayProps {
   controller: MidiOnboardingController;
@@ -72,12 +76,14 @@ export const MidiOnboardingOverlay: React.FC<MidiOnboardingOverlayProps> = ({
             transition={{ duration: 0.25 }}
             className="onboarding-step"
           >
-            <StepContent
-              step={currentStep}
-              midiConnected={state.midiConnected}
-              onSkip={() => controller.skipStep()}
-              onComplete={() => controller.completeStep()}
-            />
+            {currentStep && (
+              <StepRouter
+                step={currentStep}
+                midiConnected={state.midiConnected}
+                onSkip={() => controller.skipStep()}
+                onComplete={() => controller.completeStep()}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -85,84 +91,52 @@ export const MidiOnboardingOverlay: React.FC<MidiOnboardingOverlayProps> = ({
   );
 };
 
-/* ── Step Content Renderer ── */
-function StepContent({
+/* ── Step Router ── */
+function StepRouter({
   step,
   midiConnected,
   onSkip,
   onComplete,
 }: {
-  step: OnboardingStep | undefined;
+  step: OnboardingStep;
   midiConnected: boolean;
   onSkip: () => void;
   onComplete: () => void;
 }) {
-  if (!step) return null;
-
-  const icons: Record<string, string> = {
-    'midi-connection': '🔌',
-    'first-notes': '🎵',
-    'simple-sequence': '🎶',
-    'progress-intro': '📊',
-    'growth-mindset': '🚀',
-  };
-
-  return (
-    <div className="onboarding-step-content">
-      <div className="onboarding-icon">{icons[step.id] ?? '🎹'}</div>
-      <h2 className="onboarding-title">{step.title}</h2>
-      <p className="onboarding-description">{step.description}</p>
-
-      {/* Connection step: show status */}
-      {step.id === 'midi-connection' && (
-        <div className="onboarding-midi-status">
-          <div
-            className={`midi-status-indicator ${midiConnected ? 'connected' : 'disconnected'}`}
-          />
-          <span>{midiConnected ? 'Teclado conectado!' : 'Aguardando conexão...'}</span>
+  switch (step.id) {
+    case 'midi-connection':
+      return <MidiConnectionStep step={step} midiConnected={midiConnected} />;
+    case 'first-notes':
+      return <FirstNotesStep step={step} onSkip={onSkip} />;
+    case 'simple-sequence':
+      return (
+        <div className="onboarding-step-content">
+          <div className="onboarding-icon">🎶</div>
+          <h2 className="onboarding-title">{step.title}</h2>
+          <p className="onboarding-description">{step.description}</p>
+          {step.targetNotes && (
+            <div className="onboarding-notes-target">
+              {step.targetNotes.map((midi, i) => (
+                <span key={i} className="target-note">
+                  {['C4', 'D4', 'E4'][i] ?? `Nota ${midi}`}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="onboarding-waiting">
+            <div className="pulse-ring" />
+            <span>Toque as notas na ordem...</span>
+          </div>
+          <button className="onboarding-skip-step-btn" onClick={onSkip} type="button">
+            Pular este passo
+          </button>
         </div>
-      )}
-
-      {/* First notes / sequence: show waiting indicator */}
-      {step.requiresMidi && step.id !== 'midi-connection' && (
-        <div className="onboarding-waiting">
-          <div className="pulse-ring" />
-          <span>Toque no seu teclado...</span>
-        </div>
-      )}
-
-      {/* Sequence step: show target notes */}
-      {step.id === 'simple-sequence' && step.targetNotes && (
-        <div className="onboarding-notes-target">
-          {step.targetNotes.map((midi, i) => (
-            <span key={i} className="target-note">
-              {['C4', 'D4', 'E4'][i] ?? `Nota ${midi}`}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Non-MIDI steps: show continue button */}
-      {!step.requiresMidi && step.id !== 'midi-connection' && (
-        <button
-          className="onboarding-continue-btn"
-          onClick={onComplete}
-          type="button"
-        >
-          {step.id === 'growth-mindset' ? 'Começar a praticar! 🎹' : 'Continuar'}
-        </button>
-      )}
-
-      {/* Skip option for MIDI steps */}
-      {step.requiresMidi && (
-        <button
-          className="onboarding-skip-step-btn"
-          onClick={onSkip}
-          type="button"
-        >
-          Pular este passo
-        </button>
-      )}
-    </div>
-  );
+      );
+    case 'progress-intro':
+      return <ProgressIntroStep step={step} onContinue={onComplete} />;
+    case 'growth-mindset':
+      return <FinishStep step={step} onFinish={onComplete} />;
+    default:
+      return null;
+  }
 }

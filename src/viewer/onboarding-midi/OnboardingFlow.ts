@@ -2,24 +2,27 @@
  * MIDI Onboarding — Flow Controller (pure logic, no DOM)
  *
  * Manages onboarding state machine. Decoupled from UI and engine.
- * Persists completion to localStorage.
+ * Delegates persistence to OnboardingStorage, analytics to onboardingAnalytics.
  */
 
 import {
   OnboardingState,
   OnboardingStep,
-  OnboardingStepId,
   DEFAULT_STEPS,
-  ONBOARDING_CONFIG,
 } from './types';
+import { OnboardingStorage, CURRENT_VERSION } from './storage';
+import { onboardingAnalytics } from './analytics';
 
 export type OnboardingListener = (state: OnboardingState) => void;
 
 export class OnboardingFlow {
   private state: OnboardingState;
   private listeners = new Set<OnboardingListener>();
+  private sequenceProgress = 0; // tracks notes matched in simple-sequence step
+  private storage: OnboardingStorage;
 
-  constructor() {
+  constructor(storage?: OnboardingStorage) {
+    this.storage = storage ?? new OnboardingStorage();
     this.state = {
       currentStepIndex: 0,
       steps: DEFAULT_STEPS.map((s) => ({ ...s })),
@@ -30,21 +33,25 @@ export class OnboardingFlow {
     };
   }
 
-  /** Check if user already completed onboarding */
-  static isCompleted(storage: Pick<Storage, 'getItem'> = localStorage): boolean {
-    return storage.getItem(ONBOARDING_CONFIG.completionKey) === 'true';
-  }
-
-  /** Check if onboarding should show (flag ON + not completed + no progress) */
-  static shouldShow(
+  /** Check if user is eligible for onboarding */
+  static isEligible(
     flagEnabled: boolean,
     hasProgress: boolean,
-    storage: Pick<Storage, 'getItem'> = localStorage
+    storage?: OnboardingStorage
   ): boolean {
-    if (!flagEnabled) return false;
-    if (OnboardingFlow.isCompleted(storage)) return false;
-    if (hasProgress) return false;
-    return true;
+    const s = storage ?? new OnboardingStorage();
+    return s.isEligible(flagEnabled, hasProgress);
+  }
+
+  /** Start the onboarding (emit analytics) */
+  start(): void {
+    this.storage.touchLastSeen();
+    onboardingAnalytics.started(CURRENT_VERSION);
+    onboardingAnalytics.stepViewed(
+      this.state.steps[0].id,
+      0,
+      this.state.steps.length
+    );
   }
 
   getState(): Readonly<OnboardingState> {
@@ -56,7 +63,6 @@ export class OnboardingFlow {
     return this.state.steps[this.state.currentStepIndex] ?? null;
   }
 
-  /** Subscribe to state changes */
   subscribe(fn: OnboardingListener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -65,9 +71,9 @@ export class OnboardingFlow {
   /** Mark MIDI as connected */
   setMidiConnected(connected: boolean): void {
     this.state = { ...this.state, midiConnected: connected };
-    // Auto-complete connection step if on it
     const current = this.getCurrentStep();
     if (connected && current?.id === 'midi-connection') {
+      onboardingAnalytics.midiConnected();
       this.completeCurrentStep();
       return;
     }
@@ -80,20 +86,20 @@ export class OnboardingFlow {
     if (!current || !current.requiresMidi) return;
 
     if (current.id === 'first-notes') {
-      // Any note completes this step
+      onboardingAnalytics.firstNoteHit(midi);
       this.completeCurrentStep();
       return;
     }
 
     if (current.id === 'simple-sequence' && current.targetNotes) {
-      // Must play notes in order
-      const completedCount = this.getSequenceProgress(current);
-      const nextExpected = current.targetNotes[completedCount];
+      const nextExpected = current.targetNotes[this.sequenceProgress];
       if (midi === nextExpected) {
-        if (completedCount + 1 >= current.targetNotes.length) {
+        this.sequenceProgress++;
+        if (this.sequenceProgress >= current.targetNotes.length) {
+          this.sequenceProgress = 0;
           this.completeCurrentStep();
         } else {
-          this.notify(); // progress within step
+          this.notify();
         }
       }
       return;
@@ -105,6 +111,9 @@ export class OnboardingFlow {
     if (this.state.completed || this.state.aborted) return;
     const idx = this.state.currentStepIndex;
     if (idx >= this.state.steps.length) return;
+
+    const completedStep = this.state.steps[idx];
+    onboardingAnalytics.stepCompleted(completedStep.id, idx);
 
     const steps = this.state.steps.map((s, i) =>
       i === idx ? { ...s, completed: true } : { ...s }
@@ -122,27 +131,46 @@ export class OnboardingFlow {
     };
 
     if (isFinished) {
-      this.persistCompletion();
+      this.storage.markCompleted();
+      onboardingAnalytics.completed(
+        Date.now() - this.state.startedAt,
+        CURRENT_VERSION
+      );
+    } else {
+      const nextStep = steps[nextIdx];
+      if (nextStep) {
+        onboardingAnalytics.stepViewed(nextStep.id, nextIdx, steps.length);
+      }
     }
 
+    this.sequenceProgress = 0;
     this.notify();
   }
 
-  /** Skip current step (non-MIDI steps) */
+  /** Skip current step */
   skipCurrentStep(): void {
+    const current = this.getCurrentStep();
+    if (current) {
+      onboardingAnalytics.skipped(current.id, this.state.currentStepIndex);
+    }
     this.completeCurrentStep();
   }
 
   /** Abort onboarding entirely — user goes to hub */
   abort(): void {
+    const current = this.getCurrentStep();
+    if (current) {
+      onboardingAnalytics.skipped(current.id, this.state.currentStepIndex);
+    }
+    this.storage.markDismissed();
     this.state = { ...this.state, aborted: true };
     this.notify();
   }
 
   /** Reset (for testing/debug) */
-  reset(storage: Pick<Storage, 'removeItem'> = localStorage): void {
-    storage.removeItem(ONBOARDING_CONFIG.completionKey);
-    storage.removeItem(ONBOARDING_CONFIG.stateKey);
+  reset(): void {
+    this.storage.clear();
+    this.sequenceProgress = 0;
     this.state = {
       currentStepIndex: 0,
       steps: DEFAULT_STEPS.map((s) => ({ ...s })),
@@ -154,29 +182,13 @@ export class OnboardingFlow {
     this.notify();
   }
 
-  /** Get progress within a sequence step (how many notes matched so far) */
-  private getSequenceProgress(step: OnboardingStep): number {
-    // Track via completed notes count stored transiently
-    // For simplicity, count completed notes from state
-    // In real impl, this would be tracked in step-local state
-    return 0; // Simplified — each call to onMidiNote checks one at a time
-  }
-
-  private persistCompletion(): void {
-    try {
-      localStorage.setItem(ONBOARDING_CONFIG.completionKey, 'true');
-    } catch {
-      // Storage full — non-critical
-    }
-  }
-
   private notify(): void {
     const snap = this.getState();
     for (const fn of this.listeners) {
       try {
         fn(snap);
       } catch (e) {
-        console.error('[MidiOnboarding] listener error', e);
+        console.error('[OnboardingMIDI] listener error', e);
       }
     }
   }
