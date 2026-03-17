@@ -293,8 +293,21 @@ export const TrailNavigator: React.FC<TrailNavigatorProps> = ({
 
   const activeLevel = levels.find((l) => l.level_id === activeLevelId) ?? levels[0];
 
-  // Stats stub — empty for now, will be wired to progress service
-  const statsIndex: StatsIndex = new Map();
+  // Collect all chapter IDs across all levels for progress lookup
+  const allChapterIds = useMemo(() => {
+    const ids: number[] = [];
+    for (const lvl of levels) {
+      for (const mod of lvl.modules ?? []) {
+        for (const ch of mod.chapters ?? []) {
+          ids.push(ch.chapter_id);
+        }
+      }
+    }
+    return ids;
+  }, [levels]);
+
+  // Real progress from localStorage (local-first, no backend needed)
+  const statsIndex: StatsIndex = useMemo(() => buildStatsIndex(allChapterIds), [allChapterIds]);
 
   // Find recommended chapter (first non-coming-soon chapter)
   const allChapters =
