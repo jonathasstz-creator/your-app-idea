@@ -1,12 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Trail, TrailChapter, TrailModule, TrailLevel, HandAssignment } from '../catalog/types';
-
-/* ── Stat stub (future: wire to real progress service) ── */
-interface ChapterStats {
-  unlocked: boolean;
-  progress_pct: number;
-}
+import { buildStatsIndex, type ChapterStats } from '../progress-index';
 
 type StatsIndex = Map<number, ChapterStats>;
 
