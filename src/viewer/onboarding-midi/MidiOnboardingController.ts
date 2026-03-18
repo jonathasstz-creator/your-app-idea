@@ -3,6 +3,8 @@
  *
  * Bridges the OnboardingFlow (pure logic) with the WebMidiService and UI.
  * Created once per session, gated by feature flag. Zero impact when flag is OFF.
+ *
+ * Lifecycle: attachMidi() registers listeners with proper cleanup via destroy().
  */
 
 import { OnboardingFlow, OnboardingListener } from './OnboardingFlow';
@@ -15,26 +17,37 @@ export class MidiOnboardingController {
   private flow: OnboardingFlow;
   private storage: OnboardingStorage;
   private destroyed = false;
+  private cleanupFns: Array<() => void> = [];
 
   constructor(storage?: OnboardingStorage) {
     this.storage = storage ?? new OnboardingStorage();
     this.flow = new OnboardingFlow(this.storage);
   }
 
-  /** Wire to MIDI service for note events */
-  attachMidi(midiService: WebMidiService): void {
-    const handler = (event: MidiNoteEvent) => {
+  /** Wire to MIDI service for note events. Returns cleanup function. */
+  attachMidi(midiService: WebMidiService): () => void {
+    const noteHandler = (event: MidiNoteEvent) => {
       if (this.destroyed) return;
       if (event.type === 'note_on' && event.velocity > 0) {
         this.flow.onMidiNote(event.midi);
       }
     };
-    midiService.onNoteEvent(handler);
 
-    midiService.onStateChange((state) => {
+    const stateHandler = (state: { connected: boolean }) => {
       if (this.destroyed) return;
       this.flow.setMidiConnected(state.connected);
-    });
+    };
+
+    const unsubNote = midiService.onNoteEvent(noteHandler);
+    const unsubState = midiService.onStateChange(stateHandler);
+
+    const cleanup = () => {
+      unsubNote();
+      unsubState();
+    };
+
+    this.cleanupFns.push(cleanup);
+    return cleanup;
   }
 
   /** Start the onboarding flow */
@@ -71,8 +84,13 @@ export class MidiOnboardingController {
     return OnboardingFlow.isEligible(flagEnabled, hasProgress);
   }
 
+  /** Full cleanup: remove all MIDI listeners and mark as destroyed */
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    for (const fn of this.cleanupFns) {
+      try { fn(); } catch { /* best-effort cleanup */ }
+    }
+    this.cleanupFns.length = 0;
   }
 }

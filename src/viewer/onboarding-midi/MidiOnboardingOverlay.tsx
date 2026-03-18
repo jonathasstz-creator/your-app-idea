@@ -37,7 +37,8 @@ export const MidiOnboardingOverlay: React.FC<MidiOnboardingOverlayProps> = ({
   }, [controller, onComplete, onAbort]);
 
   const currentStep = state.steps[state.currentStepIndex];
-  const progress = ((state.currentStepIndex) / state.steps.length) * 100;
+  // Progress: completed steps / total. Step 1 of 5 = 20%, last step = 100%.
+  const progress = ((state.currentStepIndex + (currentStep?.completed ? 1 : 0)) / state.steps.length) * 100;
 
   if (state.completed || state.aborted) return null;
 
@@ -49,7 +50,7 @@ export const MidiOnboardingOverlay: React.FC<MidiOnboardingOverlayProps> = ({
           <div className="onboarding-progress-bar">
             <div
               className="onboarding-progress-fill"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${Math.max(progress, 10)}%` }}
             />
           </div>
           <div className="onboarding-header-row">
@@ -105,7 +106,7 @@ function StepRouter({
 }) {
   switch (step.id) {
     case 'midi-connection':
-      return <MidiConnectionStep step={step} midiConnected={midiConnected} />;
+      return <MidiConnectionStep step={step} midiConnected={midiConnected} onSkip={onSkip} />;
     case 'first-notes':
       return <FirstNotesStep step={step} onSkip={onSkip} />;
     case 'simple-sequence':

@@ -171,17 +171,27 @@ export class WebMidiService {
     }
 
     /**
-     * Register callback for state changes
+     * Register callback for state changes.
+     * Returns an unsubscribe function for cleanup.
      */
-    public onStateChange(callback: StateChangeCallback): void {
+    public onStateChange(callback: StateChangeCallback): () => void {
         this.stateChangeCallbacks.push(callback);
+        return () => {
+            const idx = this.stateChangeCallbacks.indexOf(callback);
+            if (idx !== -1) this.stateChangeCallbacks.splice(idx, 1);
+        };
     }
 
     /**
-     * Register callback for note events
+     * Register callback for note events.
+     * Returns an unsubscribe function for cleanup.
      */
-    public onNoteEvent(callback: NoteEventCallback): void {
+    public onNoteEvent(callback: NoteEventCallback): () => void {
         this.noteEventCallbacks.push(callback);
+        return () => {
+            const idx = this.noteEventCallbacks.indexOf(callback);
+            if (idx !== -1) this.noteEventCallbacks.splice(idx, 1);
+        };
     }
 
     /**
