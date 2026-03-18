@@ -19,9 +19,9 @@ export const ProgressIntroStep: React.FC<ProgressIntroStepProps> = ({ step, onCo
       justifyContent: 'center',
     }}>
       {[
-        { label: 'Score', value: '850', icon: '🎯' },
-        { label: 'Streak', value: '5x', icon: '🔥' },
-        { label: 'Precisão', value: '92%', icon: '✓' },
+        { label: 'Score', description: 'Pontos por nota correta', icon: '🎯' },
+        { label: 'Streak', description: 'Sequência de acertos', icon: '🔥' },
+        { label: 'Precisão', description: '% de notas certas', icon: '✓' },
       ].map((stat) => (
         <div key={stat.label} style={{
           padding: '12px 16px',
@@ -29,17 +29,22 @@ export const ProgressIntroStep: React.FC<ProgressIntroStepProps> = ({ step, onCo
           border: '1px solid rgba(0,242,255,0.15)',
           borderRadius: '10px',
           textAlign: 'center',
+          flex: '1',
         }}>
           <div style={{ fontSize: '20px' }}>{stat.icon}</div>
-          <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--primary-neon)' }}>
-            {stat.value}
-          </div>
-          <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary-neon)', marginTop: '4px' }}>
             {stat.label}
+          </div>
+          <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px', lineHeight: '1.3' }}>
+            {stat.description}
           </div>
         </div>
       ))}
     </div>
+
+    <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px', textAlign: 'center' }}>
+      Ao final de cada lição você verá seu desempenho e poderá tentar melhorar!
+    </p>
 
     <button className="onboarding-continue-btn" onClick={onContinue} type="button">
       Continuar
