@@ -48,6 +48,7 @@ import { createRemoteFlagProvider } from './feature-flags/providers/remote';
 import { FeatureFlags } from './feature-flags/types';
 import { TrailNavigator } from './components/TrailNavigator';
 import { StepQualityBadgeController, NoteFeedbackController, ChordClosureEffect } from './step-quality-ui';
+import { createMidiOnboardingRuntime } from './onboarding-midi/runtime';
 
 console.log('[INIT] ✅ All imports loaded successfully!');
 
@@ -558,6 +559,7 @@ const init = async () => {
     const FILM_HIT_WINDOW_MS = 50;
     const analyticsClient = new AnalyticsClient();
     const webMidiService = new WebMidiService();
+    const midiOnboardingRuntime = createMidiOnboardingRuntime({ midiService: webMidiService });
     let wsTransport: ITransport;
 
     // --- State Variables ---
@@ -2957,6 +2959,8 @@ const init = async () => {
             setRoute('trainer');
         }} />);
     }
+
+    midiOnboardingRuntime.checkAndShow();
 
     // Audio Playback Toggle
     const updateAudioButtonState = () => {
