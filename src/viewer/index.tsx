@@ -2984,17 +2984,21 @@ const init = async () => {
 };
 
 const startApp = async () => {
-    // Auth is non-blocking: if it fails, the app still loads with
-    // local catalog and chapter navigation working. Only API calls
-    // that require auth (REST sessions, analytics) will fail gracefully.
+    // Auth-first render gating: NO internal UI is shown until auth resolves.
+    // - authenticated → init app normally
+    // - unauthenticated → login overlay blocks until user logs in → then init
+    // - disabled → auth not configured, app works offline
+    let authResult: Awaited<ReturnType<typeof ensureAuthenticated>>;
     try {
-        await ensureAuthenticated();
-        console.log('[AUTH] ✅ autenticado, iniciando app');
+        authResult = await ensureAuthenticated();
+        console.log(`[AUTH] ✅ Auth result: ${authResult.status}`);
     } catch (err) {
-        console.warn('[AUTH] ⚠️ Auth não disponível, continuando sem autenticação:', err instanceof Error ? err.message : String(err));
-        console.info('[AUTH] Catálogo local e navegação de capítulos funcionam normalmente.');
+        console.warn('[AUTH] ⚠️ Auth falhou, continuando como disabled:', err instanceof Error ? err.message : String(err));
+        authResult = { status: 'disabled' };
     }
 
+    // Only init after auth is resolved (authenticated or disabled/offline).
+    // If unauthenticated, ensureAuthenticated() already blocked until login.
     try {
         await init();
     } catch (err) {
