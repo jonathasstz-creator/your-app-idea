@@ -37,11 +37,7 @@ export function shouldShowMidiOnboarding(
   storage: OnboardingRuntimeStorage = localStorage
 ): boolean {
   const hasProgress = hasAnyStoredProgress(storage);
-  return MidiOnboardingController.isEligible(
-    flagEnabled,
-    hasProgress,
-    new OnboardingStorage(storage)
-  );
+  return new OnboardingStorage(storage).isEligible(flagEnabled, hasProgress);
 }
 
 export function createMidiOnboardingRuntime({
