@@ -2947,7 +2947,8 @@ const init = async () => {
 
     refreshInitials();
 
-    // URL Route
+    // Default route + URL override
+    setRoute("home");
     if (window.location.pathname.includes("/viewer/trainer")) setRoute("trainer");
 
     // Home Start
