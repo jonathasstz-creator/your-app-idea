@@ -5,10 +5,20 @@ import AuthShell from './AuthShell';
 import { syncSessionToLegacyStorage } from '../auth-storage';
 import { isAuthConfigured, getConfig, isDev } from '../../config/app-config';
 
+export type AuthBootstrapResult =
+  | { status: 'authenticated' }
+  | { status: 'unauthenticated' }
+  | { status: 'disabled' };
+
 /**
- * Ensures the user is authenticated. If not, shows a full-screen auth overlay.
+ * Ensures the user is authenticated.
+ * 
+ * - If auth config is missing → returns 'disabled' (app works offline).
+ * - If session exists → returns 'authenticated'.
+ * - If no session → renders login overlay and BLOCKS until user logs in,
+ *   then returns 'authenticated'. No internal UI is shown before auth.
  */
-export async function ensureAuthenticated(): Promise<void> {
+export async function ensureAuthenticated(): Promise<AuthBootstrapResult> {
   // ── Config validation ──────────────────────────────────────────
   if (!isAuthConfigured()) {
     const cfg = getConfig();
@@ -18,23 +28,23 @@ export async function ensureAuthenticated(): Promise<void> {
       `domain: ${window.location.origin}`,
     ].join(', ');
     console.warn(`[AUTH] Config incompleta (${details}). Continuando sem autenticação.`);
-    return; // Non-blocking: app continues without auth
+    return { status: 'disabled' };
   }
 
   if (!supabase) {
     console.warn('[AUTH] Supabase client não inicializado. Continuando sem autenticação.');
-    return; // Non-blocking: app continues without auth
+    return { status: 'disabled' };
   }
 
   // ── Check existing session ─────────────────────────────────────
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
     syncSessionToLegacyStorage({ access_token: session.access_token, refresh_token: session.refresh_token });
-    return;
+    return { status: 'authenticated' };
   }
 
-  // ── No session: try to show auth overlay, but don't block the app ──
-  return new Promise<void>((resolve) => {
+  // ── No session: show auth overlay and BLOCK until user logs in ──
+  return new Promise<AuthBootstrapResult>((resolve) => {
     const overlay = document.createElement('div');
     overlay.id = 'auth-gate';
     Object.assign(overlay.style, {
@@ -44,9 +54,6 @@ export async function ensureAuthenticated(): Promise<void> {
       background: '#05060f',
     });
     document.body.appendChild(overlay);
-
-    // Don't hide the app — let it render behind the overlay
-    // so catalog and navigation are already loaded when user logs in
 
     const root = createRoot(overlay);
     const handleAuthenticated = async () => {
@@ -62,15 +69,13 @@ export async function ensureAuthenticated(): Promise<void> {
       root.unmount();
       overlay.remove();
       window.dispatchEvent(new CustomEvent('auth:success'));
-      // Don't resolve here — we already resolved below to unblock the app
+      // NOW resolve — app init only starts after successful login
+      resolve({ status: 'authenticated' });
     };
 
     root.render(React.createElement(AuthShell, { onAuthenticated: handleAuthenticated }));
 
-    // IMPORTANT: Resolve immediately to unblock app initialization.
-    // The auth overlay stays visible but the app loads behind it.
-    // When the user logs in, the overlay is removed.
-    resolve();
+    // DO NOT resolve here — block until user authenticates
   });
 }
 
