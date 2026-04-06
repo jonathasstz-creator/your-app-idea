@@ -4,6 +4,62 @@ Runbooks de diagnóstico para problemas operacionais conhecidos.
 
 ---
 
+## Runbook — CORS / Proxy / Requisições falhando
+
+### Sintomas
+- Catálogo não carrega (lista vazia)
+- Console mostra `Failed to fetch` ou `CORS error`
+- Network mostra OPTIONS → 400/403
+- Requisições não aparecem no DevTools (preflight bloqueado)
+
+### Diagnóstico
+
+#### 1. Verificar se o proxy está ativo
+```bash
+# No console do browser:
+# Verificar se as chamadas vão para o proxy (não direto para api.devoltecomele.com)
+# Network tab → filtrar por "api-proxy" ou "functions/v1"
+```
+
+#### 2. Verificar Edge Function logs
+- Acessar logs da Edge Function `api-proxy` no Lovable Cloud
+- Procurar por: `[api-proxy] GET /v1/catalog` — confirma que a requisição chegou
+- Se não aparecer: o preflight pode estar falhando antes da função
+
+#### 3. Verificar token
+```js
+// No console do browser:
+// Verificar se há token disponível
+localStorage.getItem('sb-tcpbogzrawoiyjjbxiiw-auth-token') !== null
+```
+
+#### 4. Verificar resposta do proxy
+- Se `401`: token expirado ou inválido → app faz `clearAuthStorage() + reload()`
+- Se `502`: proxy não conseguiu alcançar o backend
+- Se `200` mas dados vazios: backend retornou `{ chapters: [] }`
+
+### Causas comuns
+
+| Sintoma | Causa provável | Solução |
+|---------|---------------|---------|
+| CORS error no preview | Chamada direta ao backend (não via proxy) | Verificar se `proxyFetch` está sendo usado |
+| 401 no catalog | Token expirado | Fazer logout e login novamente |
+| 502 no proxy | Backend `api.devoltecomele.com` offline | Verificar status do backend |
+| Lista vazia sem erro | Backend retornou catalog vazio | Verificar dados no backend |
+| Chamada duplicada | `CatalogService` sem dedup | Já tem guard de `loading + loadPromise` |
+
+### Fluxo de rede esperado
+```
+Browser → OPTIONS /functions/v1/api-proxy/v1/catalog → 200 (CORS preflight)
+Browser → GET /functions/v1/api-proxy/v1/catalog → 200 (catalog data)
+```
+
+---
+
+Runbooks de diagnóstico para problemas operacionais conhecidos.
+
+---
+
 ## Runbook — Step Quality UX/HUD não aparece
 
 ### Sintomas

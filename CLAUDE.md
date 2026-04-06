@@ -2,7 +2,7 @@
 
 Contexto operacional para agentes de IA. Fonte de verdade para fluxo real, paths canônicos e comportamento atual.
 
-> **Última atualização:** 2026-03-12
+> **Última atualização:** 2026-04-06 — API Proxy genérico + backend como fonte única do catálogo.
 
 ---
 
@@ -15,12 +15,44 @@ Contexto operacional para agentes de IA. Fonte de verdade para fluxo real, paths
 | Pasta canônica | `src/viewer/` |
 | Pasta legado (NÃO editar) | `viewer/` (raiz) |
 | Config runtime | `src/config/app-config.ts` |
+| Proxy fetch centralizado | `src/viewer/proxy-fetch.ts` |
+| Edge Function proxy | `supabase/functions/api-proxy/index.ts` |
 | Feature flags types | `src/viewer/feature-flags/types.ts` |
 | Feature flags store | `src/viewer/feature-flags/store.ts` |
 | Feature flags providers | `src/viewer/feature-flags/providers/local.ts`, `remote.ts` |
 | Feature flags React | `src/viewer/feature-flags/react.tsx` |
 
 **Regra absoluta:** toda edição de viewer vai em `src/viewer/`. A pasta `viewer/` na raiz é legado e candidata a remoção.
+
+---
+
+## Arquitetura de Rede (API Proxy)
+
+Todas as chamadas REST para o backend passam por:
+```
+Frontend → proxyFetch(path) → Edge Function api-proxy → api.devoltecomele.com
+```
+
+| Componente | Arquivo | Função |
+|-----------|---------|--------|
+| `proxyFetch` | `src/viewer/proxy-fetch.ts` | Centraliza chamadas, injeta `x-external-auth` + `apikey` |
+| `api-proxy` | `supabase/functions/api-proxy/index.ts` | Encaminha para backend com CORS `*` |
+| Backend | `api.devoltecomele.com` | FastAPI, prefixo `/v1` |
+
+### Endpoints ativos
+| Método | Path | Fluxo | Latência típica |
+|--------|------|-------|----------------|
+| GET | `/v1/catalog` | Hub de capítulos | 1.4–1.9s |
+| POST | `/v1/sessions` | Início de sessão | ~1s |
+| GET | `/v1/sessions/{id}/lesson` | Carregamento de lição | ~700ms |
+| POST | `/v1/sessions/{id}/complete` | Conclusão (fire-and-forget) | — |
+| GET | `/v1/analytics/overview?days=N` | Dashboard | 0.5–1s |
+| POST | `/v1/sessions/{id}/events` | Eventos MIDI | — |
+
+### Headers
+- `x-external-auth: Bearer <token>` — token do Supabase externo, repassado como `Authorization` pelo proxy
+- `apikey: <anon_key>` — anon key do Lovable Cloud para autenticar na Edge Function
+- `Idempotency-Key` — usado em POST `/complete`
 
 ---
 
