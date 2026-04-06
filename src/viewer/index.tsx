@@ -272,27 +272,9 @@ const buildAuthHeaders = (): Headers => {
 const buildApiUrl = (path: string): string => centralBuildApiUrl(path);
 
 const fetchWithAuth = async (path: string, options: RequestInit = {}): Promise<any> => {
-    const endpoint = buildApiUrl(path);
-    const headers = new Headers(options.headers ?? {});
-    headers.set("Accept", "application/json");
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
-    const authHeaders = buildAuthHeaders();
-    authHeaders.forEach((value, key) => {
-        if (!headers.has(key)) {
-            headers.set(key, value);
-        }
-    });
-
-    const response = await fetch(endpoint, {
-        ...options,
-        headers,
-        credentials: 'omit',
-    });
+    const response = await proxyFetch(path, options);
 
     if (response.status === 401) {
-        // Token inválido/expirado: limpa storage e força re-login
         clearAuthStorage();
         window.location.reload();
         throw new Error("401 Unauthorized - token inválido, recarregando para login");
@@ -303,7 +285,6 @@ const fetchWithAuth = async (path: string, options: RequestInit = {}): Promise<a
         const error: any = new Error(`REST request failed (${response.status}): ${reason}`);
         error.status = response.status;
         error.body = reason;
-        error.url = endpoint;
         throw error;
     }
     return response.json();
