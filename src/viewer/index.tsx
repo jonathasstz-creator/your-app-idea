@@ -453,6 +453,9 @@ const init = async () => {
     const debugNoteLabel = document.getElementById("debug-note-label");
     const flagSheetToggle = document.getElementById("flag-sheet-toggle") as HTMLInputElement | null;
     const flagFallingToggle = document.getElementById("flag-falling-toggle") as HTMLInputElement | null;
+    const flagHideHudToggle = document.getElementById("flag-hide-hud-toggle") as HTMLInputElement | null;
+    const hudGlassEl = document.querySelector<HTMLElement>(".hud-glass");
+    const hudActionsEl = document.querySelector<HTMLElement>(".hud-actions");
 
     // Chapter Overlay
     const chapterOverlay = document.getElementById("chapter-overlay");
@@ -541,6 +544,9 @@ const init = async () => {
     });
     flagFallingToggle?.addEventListener("change", () => {
         featureFlags.set("showFallingNotes", !!flagFallingToggle.checked, "runtime");
+    });
+    flagHideHudToggle?.addEventListener("change", () => {
+        featureFlags.set("hideHud", !!flagHideHudToggle.checked, "runtime");
     });
 
     // --- Logic Instances ---
