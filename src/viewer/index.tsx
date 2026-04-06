@@ -2150,6 +2150,7 @@ const init = async () => {
         } else {
             ensurePianoRoll();
         }
+        applyHideHud(next.hideHud);
         console.log("[FeatureFlags] update", { source: meta.source, name: meta.name, next });
     });
 
