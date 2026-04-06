@@ -2,13 +2,15 @@
  * Catalog Service
  *
  * Centralized catalog management with caching to prevent duplicate HTTP requests.
- * Handles both REST and WebSocket transport modes.
+ * Uses the edge function proxy to avoid CORS issues in all environments.
  *
  * Also indexes static trails[] from lessons.json for the TrailNavigator UI.
  */
 
 import type { ITransport } from './transport/factory';
 import type { Trail, TrailChapter, HandAssignment } from './catalog/types';
+import { supabase } from '../integrations/supabase/client';
+import { getAuthTokenFromStorage } from './auth-storage';
 import lessonsJson from '../../assets/lessons.json';
 
 export interface CatalogTrack {
@@ -125,7 +127,7 @@ export class CatalogService {
      * @param transport - The transport instance to use
      * @returns Promise resolving to catalog data
      */
-    async load(transport: ITransport): Promise<CatalogResponse> {
+    async load(transport?: ITransport): Promise<CatalogResponse> {
         // Return cached catalog if available
         if (this.catalog) {
             console.log('[CatalogService] Using cached catalog');
@@ -138,11 +140,11 @@ export class CatalogService {
             return this.loadPromise;
         }
 
-        // Start new load
+        // Start new load — always use edge function proxy to avoid CORS
         this.loading = true;
-        console.log('[CatalogService] Loading catalog from transport...');
+        console.log('[CatalogService] Loading catalog via edge function proxy...');
 
-        this.loadPromise = transport.getCatalog()
+        this.loadPromise = this.fetchViaProxy()
             .then(catalog => {
                 this.catalog = catalog;
                 this.buildChapterLessonMap(catalog);
@@ -162,6 +164,23 @@ export class CatalogService {
             });
 
         return this.loadPromise;
+    }
+
+    /**
+     * Fetch catalog via edge function proxy (avoids CORS in all environments)
+     */
+    private async fetchViaProxy(): Promise<CatalogResponse> {
+        const externalToken = getAuthTokenFromStorage();
+        const headers: Record<string, string> = {};
+        if (externalToken) {
+            headers['x-external-auth'] = `Bearer ${externalToken}`;
+        }
+        const { data, error } = await supabase.functions.invoke('catalog-proxy', {
+            headers,
+        });
+        if (error) throw new Error(error.message ?? 'Edge function error');
+        if (!data) throw new Error('Empty response from catalog proxy');
+        return data as CatalogResponse;
     }
 
     /**

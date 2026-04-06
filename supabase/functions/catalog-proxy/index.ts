@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-external-auth",
 };
 
 const API_BASE = "https://api.devoltecomele.com";
@@ -13,12 +13,17 @@ serve(async (req) => {
   }
 
   try {
-    // Forward authorization header if present
     const headers: Record<string, string> = {
       Accept: "application/json",
     };
+
+    // Prefer x-external-auth (the real backend token) over the Lovable Cloud authorization header
+    const externalAuth = req.headers.get("x-external-auth");
     const authHeader = req.headers.get("authorization");
-    if (authHeader) {
+
+    if (externalAuth) {
+      headers["Authorization"] = externalAuth;
+    } else if (authHeader) {
       headers["Authorization"] = authHeader;
     }
 

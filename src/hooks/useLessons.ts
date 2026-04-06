@@ -3,6 +3,7 @@ import { adaptCatalogToTrails } from '../viewer/catalog/adapter';
 import type { Trail } from '../viewer/catalog/types';
 import type { BackendCatalogPayload } from '../viewer/catalog/adapter';
 import { supabase } from '../integrations/supabase/client';
+import { getAuthTokenFromStorage } from '../viewer/auth-storage';
 
 /**
  * Hook that fetches Trail[] exclusively from the backend API via edge function proxy.
@@ -18,7 +19,15 @@ export function useLessons() {
 
     async function fetchCatalog() {
       try {
-        const { data, error: fnError } = await supabase.functions.invoke('catalog-proxy');
+        const externalToken = getAuthTokenFromStorage();
+        const headers: Record<string, string> = {};
+        if (externalToken) {
+          headers['x-external-auth'] = `Bearer ${externalToken}`;
+        }
+
+        const { data, error: fnError } = await supabase.functions.invoke('catalog-proxy', {
+          headers,
+        });
 
         if (fnError) throw new Error(fnError.message ?? 'Edge function error');
         if (!data) throw new Error('Empty response');
