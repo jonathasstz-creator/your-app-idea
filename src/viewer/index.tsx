@@ -249,6 +249,7 @@ const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 
 const debugInputLogging = localStorage.getItem("debug_input") === "1";
 
 import { getConfig, buildApiUrl as centralBuildApiUrl, getApiBaseUrl } from '../config/app-config';
+import { proxyFetch, proxyFetchJson } from './proxy-fetch';
 
 const API_BASE_URL = getConfig().apiBaseUrl;
 let useRestSessionLesson = String(
