@@ -1,6 +1,7 @@
 
 import { getAuthTokenFromStorage } from "./auth-storage";
 import { getConfig } from "../config/app-config";
+import { proxyFetch } from "./proxy-fetch";
 
 export interface StatsRange {
   from: string;
@@ -243,14 +244,9 @@ export class AnalyticsClient {
   }
 
   private async fetchFromApi(days: number): Promise<StatsViewModel> {
-    const endpoint = this.buildEndpoint(days);
-    const headers = this.buildHeaders();
+    const path = `/v1/analytics/overview?days=${days}`;
     try {
-      const response = await fetch(endpoint, {
-        headers,
-        mode: "cors",
-        credentials: "include",
-      });
+      const response = await proxyFetch(path);
       if (!response.ok) {
         const detail =
           response.status === 401
@@ -258,7 +254,7 @@ export class AnalyticsClient {
             : `API retornou ${response.status}`;
         throw new AnalyticsClientError(detail, { status: response.status, source: "api" });
       }
-      console.info("[Analytics] Fonte: API", { endpoint, status: response.status });
+      console.info("[Analytics] Fonte: API (via proxy)", { path, status: response.status });
       return response.json();
     } catch (error) {
       if (error instanceof AnalyticsClientError) throw error;
@@ -266,27 +262,6 @@ export class AnalyticsClient {
         source: "api",
       });
     }
-  }
-
-  private buildEndpoint(days: number): string {
-    const rawPath = this.baseUrl
-      ? `${this.baseUrl}/v1/analytics/overview`
-      : "/v1/analytics/overview";
-    const target = rawPath.startsWith("http")
-      ? new URL(rawPath)
-      : new URL(rawPath, window.location.origin);
-    target.searchParams.set("days", days.toString());
-    return target.toString();
-  }
-
-  private buildHeaders(): Headers {
-    const headers = new Headers({ Accept: "application/json" });
-    const token = getAuthTokenFromStorage();
-    if (!token) {
-      throw new AnalyticsClientError("Auth obrigatório. Faça login para ver analytics.");
-    }
-    headers.set("Authorization", `Bearer ${token}`);
-    return headers;
   }
 
   private async fetchFallback(): Promise<StatsViewModel> {
