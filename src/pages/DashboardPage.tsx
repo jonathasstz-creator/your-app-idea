@@ -6,7 +6,7 @@ import { useLessons } from '../hooks/useLessons';
 
 const DashboardPage: React.FC = () => {
   const { profile } = useUserContext();
-  const { trails } = useLessons();
+  const { trails, loading: lessonsLoading, error: lessonsError } = useLessons();
 
   // Flatten all chapters from all trails for dashboard cards
   const allChapters = trails.flatMap(
