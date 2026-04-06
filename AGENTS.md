@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-03-12 — Step Quality UX/HUD fix: controllers permanentes + flag snapshot reativo.
+> **Última atualização:** 2026-04-06 — API Proxy genérico + backend como fonte única do catálogo.
 
 ---
 
