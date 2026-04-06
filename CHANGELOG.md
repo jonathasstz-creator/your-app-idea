@@ -1,5 +1,46 @@
 # Changelog
 
+## [2026-04-06] - Infra: API Proxy genérico + Backend como fonte única do catálogo
+
+### Resumo
+Todas as chamadas REST do frontend para o backend (`api.devoltecomele.com`) agora passam por uma Edge Function genérica (`api-proxy`), eliminando problemas de CORS em preview e produção. O catálogo de lições agora usa exclusivamente o backend como fonte de verdade.
+
+### O que mudou
+
+#### Edge Function `api-proxy` (nova)
+- **`supabase/functions/api-proxy/index.ts`**: Proxy genérico que aceita qualquer método HTTP e encaminha path + query string para `https://api.devoltecomele.com`.
+- Headers encaminhados: `Content-Type`, `Idempotency-Key`, `x-external-auth` (→ `Authorization` no upstream).
+- CORS: `Access-Control-Allow-Origin: *`. A antiga `catalog-proxy` foi substituída.
+
+#### Utilitário `proxyFetch` (novo)
+- **`src/viewer/proxy-fetch.ts`**: Centraliza todas as chamadas ao backend via proxy.
+- Injeta token externo via `x-external-auth` + `apikey` para auth da Edge Function.
+- Exporta `proxyFetch()` e `proxyFetchJson<T>()`.
+
+#### Consumidores refatorados
+- `catalog-service.ts`, `analytics-client.ts`, `rest-transport.ts`, `index.tsx`, `useLessons.ts`
+
+### Endpoints cobertos
+| Método | Path | Fluxo |
+|--------|------|-------|
+| GET | `/v1/catalog` | Hub de capítulos |
+| POST | `/v1/sessions` | Início de sessão |
+| GET | `/v1/sessions/{id}/lesson` | Carregamento de lição |
+| POST | `/v1/sessions/{id}/complete` | Conclusão fire-and-forget |
+| GET | `/v1/analytics/overview?days=N` | Dashboard |
+| POST | `/v1/sessions/{id}/events` | Eventos MIDI |
+
+### Latências observadas
+| Endpoint | Latência típica |
+|----------|----------------|
+| GET /v1/catalog | 1.4–1.9s |
+| POST /v1/sessions | ~1s |
+| GET /v1/sessions/{id}/lesson | ~700ms |
+| GET /v1/analytics/overview | 0.5–1s |
+
+---
+
+
 ## [2026-03-12] - Process: TDD and Anti-Regression Architecture
 
 ### Mudança
