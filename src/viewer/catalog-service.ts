@@ -2,13 +2,14 @@
  * Catalog Service
  *
  * Centralized catalog management with caching to prevent duplicate HTTP requests.
- * Handles both REST and WebSocket transport modes.
+ * Uses the edge function proxy to avoid CORS issues in all environments.
  *
  * Also indexes static trails[] from lessons.json for the TrailNavigator UI.
  */
 
 import type { ITransport } from './transport/factory';
 import type { Trail, TrailChapter, HandAssignment } from './catalog/types';
+import { supabase } from '../integrations/supabase/client';
 import lessonsJson from '../../assets/lessons.json';
 
 export interface CatalogTrack {
