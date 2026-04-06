@@ -1005,16 +1005,12 @@ const init = async () => {
                     const idempotencyKey = typeof crypto?.randomUUID === 'function'
                         ? crypto.randomUUID()
                         : `idem_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
-                    const apiBase = getConfig().apiBaseUrl || '';
-                    const completeUrl = `${apiBase}/v1/sessions/${completeSessionId}/complete`;
 
-                    console.log('[Complete] POST sent', { url: completeUrl, idempotencyKey });
+                    console.log('[Complete] POST sent via proxy', { session_id: completeSessionId, idempotencyKey });
 
-                    fetch(completeUrl, {
+                    proxyFetch(`/v1/sessions/${completeSessionId}/complete`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`,
                             'Idempotency-Key': idempotencyKey,
                         },
                         body: JSON.stringify(completePayload),
