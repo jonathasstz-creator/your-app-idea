@@ -456,6 +456,7 @@ const init = async () => {
     const flagHideHudToggle = document.getElementById("flag-hide-hud-toggle") as HTMLInputElement | null;
     const hudGlassEl = document.querySelector<HTMLElement>(".hud-glass");
     const hudActionsEl = document.querySelector<HTMLElement>(".hud-actions");
+    const hudRestoreBtn = document.getElementById("hud-restore-btn") as HTMLButtonElement | null;
 
     // Chapter Overlay
     const chapterOverlay = document.getElementById("chapter-overlay");
