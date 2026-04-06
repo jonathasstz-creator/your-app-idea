@@ -2116,6 +2116,13 @@ const init = async () => {
     const syncFlagToggles = () => {
         if (flagSheetToggle) flagSheetToggle.checked = featureFlagSnapshot.showSheetMusic;
         if (flagFallingToggle) flagFallingToggle.checked = featureFlagSnapshot.showFallingNotes;
+        if (flagHideHudToggle) flagHideHudToggle.checked = featureFlagSnapshot.hideHud;
+        applyHideHud(featureFlagSnapshot.hideHud);
+    };
+
+    const applyHideHud = (hide: boolean) => {
+        if (hudGlassEl) hudGlassEl.classList.toggle('is-minimized', hide);
+        if (hudActionsEl) hudActionsEl.classList.toggle('is-minimized', hide);
     };
 
     // Apply initial mount according to flags (after handlers and debug sync are available)
