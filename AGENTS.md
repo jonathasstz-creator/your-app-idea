@@ -241,17 +241,22 @@ src/main.tsx
 
 > **Decisão arquitetural:** Auth é non-blocking. O app funciona sem sessão ativa. Isso permite que o catálogo local e a navegação funcionem 100% offline.
 
-### 6.2 Carregamento de catálogo (local-first)
+### 6.2 Carregamento de catálogo (backend-first via proxy)
 ```
-init() / useLessons()
-  → buildLocalCatalog()         # Lê assets/lessons.json
-  → adaptCatalogToTrails()      # Converte para Trail[]
+init()
+  → requestChapterCatalog()
+  → catalogService.load()             # src/viewer/catalog-service.ts
+    → proxyFetchJson('/v1/catalog')    # src/viewer/proxy-fetch.ts
+      → Edge Function api-proxy       # supabase/functions/api-proxy/index.ts
+        → GET https://api.devoltecomele.com/v1/catalog
+    → buildChapterLessonMap()          # Indexa chapter_id → lesson_id
+    → catalog cached in memory
+  → catalogService.getTrails()
+    → buildTrailsFromCatalog()         # Monta Trail[] a partir de tracks[] + chapters[]
   → Renderiza TrailNavigator / LessonsHubPage
-
-  // Opcionalmente, se transport estiver disponível:
-  → catalogService.load(transport)  # Enriquece com dados do backend
-  → buildTrailsFromCatalog()        # Mescla tracks[] + chapters[]
 ```
+
+> **Decisão arquitetural:** O backend é a fonte única de verdade para o catálogo. Se o backend falhar, a lista de capítulos fica vazia.
 
 ### 6.3 Início de sessão de prática
 ```
@@ -322,14 +327,16 @@ featureFlags.init(remoteProvider?)
 
 | O quê | Onde |
 |-------|------|
-| **Currículo / lições** | `assets/lessons.json` **(fonte primária)** |
+| **Currículo / lições** | Backend API `/v1/catalog` via `api-proxy` **(fonte única)** |
 | Tipos do catálogo | `src/viewer/catalog/types.ts` |
 | Tipos do domínio musical | `src/viewer/types.ts` |
 | Tipos do task/endscreen | `src/viewer/types/task.ts` |
 | Tipos de analytics | `src/viewer/analytics-client.ts` (interfaces inline) |
 | Tipos de auth | `src/viewer/auth/types.ts` |
-| Serviço de catálogo | `src/viewer/catalog-service.ts` |
-| Adapter local | `src/viewer/catalog/adapter.ts` + `local-catalog.ts` |
+| Serviço de catálogo | `src/viewer/catalog-service.ts` (carrega via `proxyFetchJson`) |
+| Proxy centralizado | `src/viewer/proxy-fetch.ts` (todas as chamadas /v1/*) |
+| Edge Function proxy | `supabase/functions/api-proxy/index.ts` |
+| Adapter local (metadados) | `src/viewer/catalog/adapter.ts` + `local-catalog.ts` |
 | Config de runtime | `src/config/app-config.ts` (AppConfig interface) |
 | Config publicada | `public/config.json` |
 | Feature flags | `src/viewer/feature-flags/types.ts` (FeatureFlags) |
@@ -355,9 +362,10 @@ featureFlags.init(remoteProvider?)
 8. **Imutabilidade:** `LessonTransposer.transpose()` retorna clone. Engine não muta input. Manter esse padrão.
 9. **Fire-and-forget:** POST `/v1/sessions/{id}/complete` nunca deve bloquear a UI. Falhas são logadas, não lançadas. Guard `completeSent` impede duplicidade.
 10. **Feature flags:** Novas features experimentais devem ser protegidas por flag em `src/viewer/feature-flags/types.ts`.
-11. **Backend opcional:** O catálogo funciona 100% offline via `assets/lessons.json`. O POST de conclusão de sessão é fire-and-forget — se o backend estiver indisponível, o endscreen aparece normalmente.
-12. **`viewer/` (raiz) é legado.** Sempre editar `src/viewer/`. Nunca editar `viewer/`.
-13. **`assets/lessons.json` é a fonte do currículo.** Não hardcodar currículo em componentes ou serviços. Usar o pipeline: `local-catalog → adapter → Trail[]`.
+11. **Backend é fonte única do catálogo:** `CatalogService.getTrails()` retorna `[]` se o backend não respondeu. Não há fallback local. `assets/lessons.json` é usado apenas para metadados estáticos de trail chapters.
+12. **Todas as chamadas /v1/* via proxy:** Usar `proxyFetch()` ou `proxyFetchJson()` de `src/viewer/proxy-fetch.ts`. Nunca chamar `api.devoltecomele.com` diretamente do browser.
+13. **`viewer/` (raiz) é legado.** Sempre editar `src/viewer/`. Nunca editar `viewer/`.
+14. **Edge Function `api-proxy`** é o ponto único de saída para o backend. Não criar proxies adicionais para endpoints individuais.
 
 ### Processo de correção de bugs
 1. **Diagnosticar:** Ler logs, checar storage, validar env vars e feature flags.
@@ -523,11 +531,18 @@ Regras de handoff:
 - A monotonicidade (x nunca diminui com beat crescente) é crítica. Se quebrar, falling notes "voltam" na tela.
 - Line breaks (sistemas diferentes na partitura) são tratados com `LINE_BREAK_THRESHOLD`.
 
-### Catálogo — pipeline local
-- `assets/lessons.json` → `buildLocalCatalog()` → `adaptCatalogToTrails()` → `Trail[]`.
-- Se `lessons.json` mudar de shape, o adapter precisa ser atualizado.
-- `CatalogService.getChapterLessonId()` usa fallback `lesson_{id}` para capítulos ≥ 4 não mapeados.
-- O `useLessons()` hook é o ponto de consumo React do pipeline.
+### Catálogo — backend-first via proxy
+- Backend (`/v1/catalog` via `api-proxy`) é a **fonte única** de verdade.
+- `CatalogService.getTrails()` retorna `[]` se o backend não respondeu.
+- `assets/lessons.json` é usado apenas para metadados estáticos de trail chapters (hand, difficulty, etc.).
+- `CatalogService.getChapterLessonId()` usa o mapa indexado do backend.
+- Todas as chamadas passam por `proxyFetch()` → Edge Function → backend.
+
+### Proxy e CORS
+- **`src/viewer/proxy-fetch.ts`** é o ponto centralizado de todas as chamadas `/v1/*`.
+- Injeta `x-external-auth` (token do Supabase externo) e `apikey` (anon key do Lovable Cloud).
+- **`supabase/functions/api-proxy/index.ts`** encaminha para `api.devoltecomele.com` com CORS `*`.
+- Nunca chamar `api.devoltecomele.com` diretamente do browser — sempre via proxy.
 
 ### Analytics — timezone
 - `local_date` deve ser calculado em `America/Sao_Paulo`, não UTC.
@@ -582,14 +597,19 @@ Regras de handoff:
 - ✅ POST `/v1/sessions/{id}/complete` fire-and-forget implementado no write path (`index.tsx`)
 - ✅ Step Quality System (PR1): classificação PERFECT/GREAT/GOOD/RECOVERED, streak por qualidade de step, feature flag `useStepQualityStreak`
 - ✅ Step Quality UX/HUD (PR2): controllers visuais (badge, note feedback, chord closure), feature flag `showStepQualityFeedback`, wiring corrigido para lifecycle reativo
+- ✅ **API Proxy genérico** (`api-proxy`): todas as chamadas `/v1/*` passam pela Edge Function, resolvendo CORS em preview e produção
+- ✅ **Backend como fonte única do catálogo**: `CatalogService` carrega do backend via `proxyFetchJson`, sem fallback local
+- ✅ **`proxyFetch` centralizado**: utilitário único para todas as chamadas REST ao backend
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.
+- **`supabase/functions/catalog-proxy/`:** Substituída pelo `api-proxy` genérico.
 - **Arquivos `.md` de análise na raiz:** `ANALISE-ARQUIVOS-LEGADOS.md`, `RESUMO_EXECUTIVO_CTO.md`, `ROADMAP.md`, etc. — podem estar desatualizados.
 - **`run_legacy_temp.py`:** Script temporário sem propósito documentado.
 
 ### Incompleto
-- **Cobertura de testes:** `index.tsx` (2800 linhas, o orquestrador principal) não tem cobertura direta de testes.
+- **Cobertura de testes:** `index.tsx` (~3000 linhas, o orquestrador principal) não tem cobertura direta de testes.
 - **`beat-to-x-mapping.ts`:** Testes cobrem `interpolateBeatToX` (pura) mas não funções dependentes de OSMD/DOM.
-- **Navegação completa:** Clicar em capítulo no LessonsHubPage ainda não redireciona para `/practice/:lessonId`.
-- **statsIndex do TrailNavigator:** Stub vazio — precisa ser conectado a dados reais de progresso (localStorage ou backend).
+- **UX de loading/error**: Catálogo, sessões e analytics não têm skeleton/error states visuais.
+- **Timeout no proxy**: `proxyFetch` não tem `AbortController` com timeout explícito.
+- **Cache do catálogo**: Sem persistência em sessionStorage; cada visita ao hub faz nova requisição (~1.5s).
