@@ -10,6 +10,7 @@
 import type { ITransport } from './transport/factory';
 import type { Trail, TrailChapter, HandAssignment } from './catalog/types';
 import { supabase } from '../integrations/supabase/client';
+import { getAuthTokenFromStorage } from './auth-storage';
 import lessonsJson from '../../assets/lessons.json';
 
 export interface CatalogTrack {
