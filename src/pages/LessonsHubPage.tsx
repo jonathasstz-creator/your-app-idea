@@ -23,7 +23,10 @@ const LessonsHubPage: React.FC = () => {
         <Header />
         <main className="p-6 space-y-6">
           <h1 className="text-2xl font-bold">Catálogo de Lições</h1>
-          {loading && <p className="text-muted-foreground">Carregando...</p>}
+          {loading && <p className="text-muted-foreground">Carregando catálogo do servidor...</p>}
+          {!loading && trails.length === 0 && (
+            <p className="text-muted-foreground">Nenhum capítulo disponível. Verifique a conexão com o servidor.</p>
+          )}
 
           {/* Trail selector */}
           <div className="grid md:grid-cols-3 gap-3">
