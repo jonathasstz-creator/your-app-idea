@@ -6,7 +6,8 @@ export type FeatureFlagName =
   | 'useWebSocket'
   | 'useStepQualityStreak'
   | 'showStepQualityFeedback'
-  | 'enableMidiOnboarding';
+  | 'enableMidiOnboarding'
+  | 'hideHud';
 
 export type FeatureFlags = Record<FeatureFlagName, boolean>;
 export type FlagSource = 'default' | 'localStorage' | 'remote' | 'runtime';
@@ -30,4 +31,5 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   useStepQualityStreak: false,
   showStepQualityFeedback: false,
   enableMidiOnboarding: false,
+  hideHud: false,
 };
