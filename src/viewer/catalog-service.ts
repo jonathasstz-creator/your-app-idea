@@ -78,9 +78,8 @@ export class CatalogService {
         if (this.catalog && (this.catalog.tracks?.length ?? 0) > 0) {
             return this.buildTrailsFromCatalog(this.catalog);
         }
-        // Fallback to static lessons.json while catalog has not yet loaded
-        const json = lessonsJson as unknown as { trails?: Trail[] };
-        return json.trails ?? [];
+        // No local fallback — backend is the single source of truth
+        return [];
     }
 
     /**
