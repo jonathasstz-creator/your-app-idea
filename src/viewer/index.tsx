@@ -456,6 +456,7 @@ const init = async () => {
     const flagHideHudToggle = document.getElementById("flag-hide-hud-toggle") as HTMLInputElement | null;
     const hudGlassEl = document.querySelector<HTMLElement>(".hud-glass");
     const hudActionsEl = document.querySelector<HTMLElement>(".hud-actions");
+    const hudRestoreBtn = document.getElementById("hud-restore-btn") as HTMLButtonElement | null;
 
     // Chapter Overlay
     const chapterOverlay = document.getElementById("chapter-overlay");
@@ -2123,7 +2124,12 @@ const init = async () => {
     const applyHideHud = (hide: boolean) => {
         if (hudGlassEl) hudGlassEl.classList.toggle('is-minimized', hide);
         if (hudActionsEl) hudActionsEl.classList.toggle('is-minimized', hide);
+        if (hudRestoreBtn) hudRestoreBtn.style.display = hide ? '' : 'none';
     };
+
+    hudRestoreBtn?.addEventListener('click', () => {
+        featureFlags.set('hideHud', false, 'runtime');
+    });
 
     // Apply initial mount according to flags (after handlers and debug sync are available)
     syncFlagToggles();

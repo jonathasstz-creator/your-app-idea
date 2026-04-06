@@ -1481,6 +1481,31 @@ table {
   display: none !important;
 }
 
+.hud-restore-btn {
+  position: fixed;
+  top: calc(var(--navbar-h, 62px) + 12px);
+  right: 16px;
+  z-index: 200;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(5,6,15,0.85);
+  backdrop-filter: blur(12px);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.hud-restore-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  box-shadow: 0 2px 16px rgba(0,242,255,0.15);
+}
+
 .sheet-wrapper {
   position: relative;
   width: 100%;
