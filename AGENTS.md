@@ -23,7 +23,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | Sheet Music | OSMD (OpenSheetMusicDisplay) |
 | Testes | Vitest + jsdom (186+ testes, 18 arquivos) |
 
-> **Nota:** Este projeto Lovable **não tem backend próprio**. Não há FastAPI, não há rotas `/v1` reais. O catálogo de lições funciona 100% offline via `assets/lessons.json`. A arquitetura está preparada para backend futuro (transport layer), mas não depende dele.
+> **Nota:** Este projeto consome um backend FastAPI externo em `api.devoltecomele.com` via Edge Function proxy (`api-proxy`). O catálogo, sessões e analytics vêm do backend (fonte única de verdade). O proxy resolve CORS em preview e produção. `assets/lessons.json` é usado apenas para indexação estática de metadados de trail chapters.
 
 ### Módulos principais
 - **`src/viewer/`** — Núcleo funcional: motores de lição (V1/V2), MIDI, piano roll, OSMD, transport, analytics, auth, endscreen, feature flags, catálogo.
@@ -36,11 +36,11 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 ```
 [Usuário] → MIDI Keyboard → WebMidiService → LessonEngine (V1 ou V2)
                                                    ↕
-[assets/lessons.json] → adapter → CatalogService → Trail[] → TrailNavigator/Hub UI
+[Backend API] → api-proxy (Edge Function) → proxyFetch → CatalogService → Trail[] → TrailNavigator/Hub UI
                                                    ↕
 [OSMD] → Partitura renderizada → beat-to-x-mapping → Falling Notes / Cursor
                                                    ↕
-[Auth] → Lovable Cloud (Supabase) → non-blocking → app continua mesmo sem sessão
+[Auth] → Lovable Cloud (Supabase externo) → token → x-external-auth → backend
 ```
 
 ---
@@ -53,7 +53,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 |---------|-----------------|
 | `src/main.tsx` | **Entrypoint real.** Carrega `loadRuntimeConfig()` → valida → importa `src/viewer/index.tsx` |
 | `src/viewer/index.tsx` | Orquestrador principal (~2800 linhas). Monta DOM, inicia MIDI, transport, engine, renderiza Home/Hub/Dashboard/Trainer. |
-| `src/viewer/catalog-service.ts` | **Serviço central de catálogo.** Lê trails de `lessons.json`, indexa capítulos, resolve `chapterId → lessonId`. Suporta futuro backend via transport. |
+| `src/viewer/catalog-service.ts` | **Serviço central de catálogo.** Carrega do backend via `proxyFetchJson('/v1/catalog')`. Sem fallback local — backend é fonte única. Indexa metadados estáticos de `lessons.json` para TrailNavigator. |
 | `src/viewer/catalog/types.ts` | Tipos do catálogo: `Trail`, `TrailLevel`, `TrailModule`, `TrailChapter`, `HandAssignment`. |
 | `src/viewer/catalog/adapter.ts` | Adapter: converte catálogo local → `Trail[]` hierárquico. |
 | `src/viewer/catalog/local-catalog.ts` | Builder: lê `assets/lessons.json` e monta estrutura normalizada (`tracks[]`, `chapters[]`, `lessons[]`). |
@@ -61,7 +61,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | `src/viewer/lesson-engine.ts` | Motor de lição V1 (monofônico) e V2 (polifônico/acordes). WAIT + FILM modes. |
 | `src/viewer/lesson-pipeline.ts` | Parser + roteador automático V1/V2 baseado em heurística. |
 | `src/viewer/beat-to-x-mapping.ts` | Mapeia beat musical → posição X na tela (critical para falling notes + cursor). |
-| `src/viewer/analytics-client.ts` | Cliente de analytics: `fetchOverview()`, cache por user, fallback estático. |
+| `src/viewer/analytics-client.ts` | Cliente de analytics: `fetchOverview()` via `proxyFetch`, cache por user, fallback estático configurável. |
 | `src/viewer/auth-storage.ts` | Extração de token JWT de múltiplas chaves de storage (legado + dinâmico Supabase). |
 | `src/viewer/auth/` | Auth gate: login/registro via Supabase. **Non-blocking** — app funciona sem sessão. |
 | `src/viewer/transport/` | Abstração REST/WebSocket (`factory.ts` detecta automaticamente). |
@@ -75,18 +75,34 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | `src/pages/LessonsHubPage.tsx` | Página de catálogo React: consome `useLessons()` e renderiza capítulos reais. |
 | `src/viewer/__tests__/` | 18 arquivos de teste Vitest cobrindo regressões críticas. |
 | `public/config.json` | Config de runtime (Supabase URL, analytics mode). |
-| `assets/` | **Fonte de verdade do currículo:** `lessons.json` (trilhas/capítulos estáticos). |
+| `assets/` | Metadados estáticos do currículo. `lessons.json` usado para indexação de trail chapters. **Não é mais fonte primária** — backend é fonte única. |
+| `src/viewer/proxy-fetch.ts` | **Utilitário centralizado de fetch via proxy.** Todas as chamadas `/v1/*` passam por aqui → Edge Function `api-proxy` → backend. Injeta `x-external-auth` + `apikey`. |
+| `supabase/functions/api-proxy/index.ts` | **Edge Function proxy genérica.** Encaminha qualquer método/path para `api.devoltecomele.com`. Resolve CORS. |
 | `viewer/` (raiz) | **LEGADO.** Não usar. `src/viewer/` é o canonical. |
 
-### Pipeline do catálogo local (sem backend)
+### Pipeline do catálogo (backend-first)
 ```
-assets/lessons.json
-  → buildLocalCatalog()          # src/viewer/catalog/local-catalog.ts
+Backend API (api.devoltecomele.com)
+  → Edge Function api-proxy           # supabase/functions/api-proxy/index.ts
+  → proxyFetchJson('/v1/catalog')      # src/viewer/proxy-fetch.ts
+  → CatalogService.load()             # src/viewer/catalog-service.ts
     → { tracks[], chapters[], lessons[] }
-  → adaptCatalogToTrails()       # src/viewer/catalog/adapter.ts
-    → Trail[] (levels/modules/chapters hierárquico)
-  → CatalogService.getTrails()   # src/viewer/catalog-service.ts (fallback local)
+  → buildTrailsFromCatalog()           # Monta Trail[] a partir de tracks + chapters
   → TrailNavigator / LessonsHubPage / piano-pro-hub
+
+  // Metadados estáticos (lessons.json) usados apenas para indexação
+  // de TrailChapter metadata (hand, difficulty, etc.)
+```
+
+### Pipeline de rede (todas as chamadas /v1/*)
+```
+Frontend (proxyFetch)
+  → GET/POST https://{supabase-url}/functions/v1/api-proxy/v1/{path}
+    Headers: apikey (anon), x-external-auth (Bearer token externo)
+  → Edge Function api-proxy
+    → Forward para https://api.devoltecomele.com/v1/{path}
+    Headers upstream: Authorization (from x-external-auth), Content-Type, Idempotency-Key
+  → Response: status + body repassados com CORS headers
 ```
 
 ### Entrypoints
@@ -95,8 +111,9 @@ assets/lessons.json
 ### Dependências críticas entre camadas
 - `lesson-engine.ts` **não depende** de DOM/React — é testável isoladamente.
 - `beat-to-x-mapping.ts` **depende** de `OsmdController` (DOM) — difícil de testar unitariamente sem mock.
-- `analytics-client.ts` depende de `auth-storage.ts` → `getAuthTokenFromStorage()`.
-- `catalog-service.ts` funciona **100% offline** via `lessons.json`. Backend é opcional.
+- `analytics-client.ts` depende de `auth-storage.ts` → `getAuthTokenFromStorage()` e de `proxyFetch`.
+- `catalog-service.ts` depende de `proxyFetchJson` para carregar do backend. Retorna `[]` se backend indisponível.
+- `proxy-fetch.ts` depende de `supabase/client.ts` (URL) e `auth-storage.ts` (token externo).
 - `index.tsx` é o "god file" que conecta tudo — modificar com extremo cuidado.
 
 ---
