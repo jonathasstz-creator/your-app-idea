@@ -7,6 +7,7 @@
 
 import type { ITransport, CatalogResponse, SessionResponse, LessonContent } from './transport';
 import { getAuthTokenFromStorage, clearAuthStorage } from '../auth-storage';
+import { proxyFetch } from '../proxy-fetch';
 
 export class RestTransport implements ITransport {
     private baseUrl: string;
@@ -117,28 +118,7 @@ export class RestTransport implements ITransport {
     // Private helper methods
 
     private async fetchWithAuth(path: string, options: RequestInit = {}): Promise<any> {
-        const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
-
-        const headers = new Headers(options.headers ?? {});
-        headers.set('Accept', 'application/json');
-
-        if (options.body && !headers.has('Content-Type')) {
-            headers.set('Content-Type', 'application/json');
-        }
-
-        // Add authentication headers
-        const authHeaders = this.buildHeaders();
-        authHeaders.forEach((value, key) => {
-            if (!headers.has(key)) {
-                headers.set(key, value);
-            }
-        });
-
-        const response = await fetch(url, {
-            ...options,
-            headers,
-            credentials: 'omit',
-        });
+        const response = await proxyFetch(path, options);
 
         if (response.status === 401) {
             clearAuthStorage();
@@ -153,7 +133,6 @@ export class RestTransport implements ITransport {
             );
             error.status = response.status;
             error.body = errorText;
-            error.url = url;
             throw error;
         }
 

@@ -9,8 +9,7 @@
 
 import type { ITransport } from './transport/factory';
 import type { Trail, TrailChapter, HandAssignment } from './catalog/types';
-import { supabase } from '../integrations/supabase/client';
-import { getAuthTokenFromStorage } from './auth-storage';
+import { proxyFetchJson } from './proxy-fetch';
 import lessonsJson from '../../assets/lessons.json';
 
 export interface CatalogTrack {
@@ -170,17 +169,7 @@ export class CatalogService {
      * Fetch catalog via edge function proxy (avoids CORS in all environments)
      */
     private async fetchViaProxy(): Promise<CatalogResponse> {
-        const externalToken = getAuthTokenFromStorage();
-        const headers: Record<string, string> = {};
-        if (externalToken) {
-            headers['x-external-auth'] = `Bearer ${externalToken}`;
-        }
-        const { data, error } = await supabase.functions.invoke('catalog-proxy', {
-            headers,
-        });
-        if (error) throw new Error(error.message ?? 'Edge function error');
-        if (!data) throw new Error('Empty response from catalog proxy');
-        return data as CatalogResponse;
+        return proxyFetchJson<CatalogResponse>('/v1/catalog');
     }
 
     /**

@@ -249,6 +249,7 @@ const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 
 const debugInputLogging = localStorage.getItem("debug_input") === "1";
 
 import { getConfig, buildApiUrl as centralBuildApiUrl, getApiBaseUrl } from '../config/app-config';
+import { proxyFetch, proxyFetchJson } from './proxy-fetch';
 
 const API_BASE_URL = getConfig().apiBaseUrl;
 let useRestSessionLesson = String(
@@ -271,27 +272,9 @@ const buildAuthHeaders = (): Headers => {
 const buildApiUrl = (path: string): string => centralBuildApiUrl(path);
 
 const fetchWithAuth = async (path: string, options: RequestInit = {}): Promise<any> => {
-    const endpoint = buildApiUrl(path);
-    const headers = new Headers(options.headers ?? {});
-    headers.set("Accept", "application/json");
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
-    const authHeaders = buildAuthHeaders();
-    authHeaders.forEach((value, key) => {
-        if (!headers.has(key)) {
-            headers.set(key, value);
-        }
-    });
-
-    const response = await fetch(endpoint, {
-        ...options,
-        headers,
-        credentials: 'omit',
-    });
+    const response = await proxyFetch(path, options);
 
     if (response.status === 401) {
-        // Token inválido/expirado: limpa storage e força re-login
         clearAuthStorage();
         window.location.reload();
         throw new Error("401 Unauthorized - token inválido, recarregando para login");
@@ -302,7 +285,6 @@ const fetchWithAuth = async (path: string, options: RequestInit = {}): Promise<a
         const error: any = new Error(`REST request failed (${response.status}): ${reason}`);
         error.status = response.status;
         error.body = reason;
-        error.url = endpoint;
         throw error;
     }
     return response.json();
@@ -1023,16 +1005,12 @@ const init = async () => {
                     const idempotencyKey = typeof crypto?.randomUUID === 'function'
                         ? crypto.randomUUID()
                         : `idem_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
-                    const apiBase = getConfig().apiBaseUrl || '';
-                    const completeUrl = `${apiBase}/v1/sessions/${completeSessionId}/complete`;
 
-                    console.log('[Complete] POST sent', { url: completeUrl, idempotencyKey });
+                    console.log('[Complete] POST sent via proxy', { session_id: completeSessionId, idempotencyKey });
 
-                    fetch(completeUrl, {
+                    proxyFetch(`/v1/sessions/${completeSessionId}/complete`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`,
                             'Idempotency-Key': idempotencyKey,
                         },
                         body: JSON.stringify(completePayload),
