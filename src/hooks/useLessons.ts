@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react';
 import { adaptCatalogToTrails } from '../viewer/catalog/adapter';
 import type { Trail } from '../viewer/catalog/types';
 import type { BackendCatalogPayload } from '../viewer/catalog/adapter';
-import { getAuthTokenFromStorage } from '../viewer/auth-storage';
-
-const API_BASE = 'https://api.devoltecomele.com';
+import { supabase } from '../integrations/supabase/client';
 
 /**
- * Hook that fetches Trail[] exclusively from the backend API.
+ * Hook that fetches Trail[] exclusively from the backend API via edge function proxy.
  * No local fallback — if the API fails, trails will be empty.
  */
 export function useLessons() {
@@ -20,20 +18,18 @@ export function useLessons() {
 
     async function fetchCatalog() {
       try {
-        const token = getAuthTokenFromStorage();
-        const headers: Record<string, string> = { 'Accept': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const { data, error: fnError } = await supabase.functions.invoke('catalog-proxy');
 
-        const res = await fetch(`${API_BASE}/v1/catalog`, { headers });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (fnError) throw new Error(fnError.message ?? 'Edge function error');
+        if (!data) throw new Error('Empty response');
 
-        const data: BackendCatalogPayload = await res.json();
+        const catalog = data as BackendCatalogPayload;
         if (!cancelled) {
-          setTrails(adaptCatalogToTrails(data));
+          setTrails(adaptCatalogToTrails(catalog));
           setError(null);
         }
       } catch (err: any) {
-        console.error('[useLessons] Failed to fetch catalog from backend:', err);
+        console.error('[useLessons] Failed to fetch catalog:', err);
         if (!cancelled) {
           setTrails([]);
           setError(err.message ?? 'Erro ao carregar catálogo');
