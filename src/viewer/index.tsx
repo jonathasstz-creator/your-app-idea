@@ -453,6 +453,9 @@ const init = async () => {
     const debugNoteLabel = document.getElementById("debug-note-label");
     const flagSheetToggle = document.getElementById("flag-sheet-toggle") as HTMLInputElement | null;
     const flagFallingToggle = document.getElementById("flag-falling-toggle") as HTMLInputElement | null;
+    const flagHideHudToggle = document.getElementById("flag-hide-hud-toggle") as HTMLInputElement | null;
+    const hudGlassEl = document.querySelector<HTMLElement>(".hud-glass");
+    const hudActionsEl = document.querySelector<HTMLElement>(".hud-actions");
 
     // Chapter Overlay
     const chapterOverlay = document.getElementById("chapter-overlay");
@@ -541,6 +544,9 @@ const init = async () => {
     });
     flagFallingToggle?.addEventListener("change", () => {
         featureFlags.set("showFallingNotes", !!flagFallingToggle.checked, "runtime");
+    });
+    flagHideHudToggle?.addEventListener("change", () => {
+        featureFlags.set("hideHud", !!flagHideHudToggle.checked, "runtime");
     });
 
     // --- Logic Instances ---
@@ -2110,6 +2116,13 @@ const init = async () => {
     const syncFlagToggles = () => {
         if (flagSheetToggle) flagSheetToggle.checked = featureFlagSnapshot.showSheetMusic;
         if (flagFallingToggle) flagFallingToggle.checked = featureFlagSnapshot.showFallingNotes;
+        if (flagHideHudToggle) flagHideHudToggle.checked = featureFlagSnapshot.hideHud;
+        applyHideHud(featureFlagSnapshot.hideHud);
+    };
+
+    const applyHideHud = (hide: boolean) => {
+        if (hudGlassEl) hudGlassEl.classList.toggle('is-minimized', hide);
+        if (hudActionsEl) hudActionsEl.classList.toggle('is-minimized', hide);
     };
 
     // Apply initial mount according to flags (after handlers and debug sync are available)
@@ -2137,6 +2150,7 @@ const init = async () => {
         } else {
             ensurePianoRoll();
         }
+        applyHideHud(next.hideHud);
         console.log("[FeatureFlags] update", { source: meta.source, name: meta.name, next });
     });
 

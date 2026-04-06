@@ -1473,6 +1473,14 @@ table {
   display: none;
 }
 
+/* Minimizar Menu (hideHud flag) */
+.hud-glass.is-minimized {
+  display: none !important;
+}
+.hud-actions.is-minimized {
+  display: none !important;
+}
+
 .sheet-wrapper {
   position: relative;
   width: 100%;
