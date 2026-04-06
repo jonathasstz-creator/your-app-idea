@@ -126,7 +126,7 @@ export class CatalogService {
      * @param transport - The transport instance to use
      * @returns Promise resolving to catalog data
      */
-    async load(transport: ITransport): Promise<CatalogResponse> {
+    async load(transport?: ITransport): Promise<CatalogResponse> {
         // Return cached catalog if available
         if (this.catalog) {
             console.log('[CatalogService] Using cached catalog');
@@ -139,11 +139,11 @@ export class CatalogService {
             return this.loadPromise;
         }
 
-        // Start new load
+        // Start new load — always use edge function proxy to avoid CORS
         this.loading = true;
-        console.log('[CatalogService] Loading catalog from transport...');
+        console.log('[CatalogService] Loading catalog via edge function proxy...');
 
-        this.loadPromise = transport.getCatalog()
+        this.loadPromise = this.fetchViaProxy()
             .then(catalog => {
                 this.catalog = catalog;
                 this.buildChapterLessonMap(catalog);
@@ -163,6 +163,16 @@ export class CatalogService {
             });
 
         return this.loadPromise;
+    }
+
+    /**
+     * Fetch catalog via edge function proxy (avoids CORS in all environments)
+     */
+    private async fetchViaProxy(): Promise<CatalogResponse> {
+        const { data, error } = await supabase.functions.invoke('catalog-proxy');
+        if (error) throw new Error(error.message ?? 'Edge function error');
+        if (!data) throw new Error('Empty response from catalog proxy');
+        return data as CatalogResponse;
     }
 
     /**
