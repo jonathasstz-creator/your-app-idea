@@ -8,7 +8,7 @@
  *   const session = await proxyFetch('/v1/sessions', { method: 'POST', body: JSON.stringify(payload) });
  */
 
-import { supabase } from '../integrations/supabase/client';
+import { getConfig } from '../config/app-config';
 import { getAuthTokenFromStorage } from './auth-storage';
 
 const PROXY_FN = 'api-proxy';
