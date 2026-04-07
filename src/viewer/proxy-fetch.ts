@@ -58,7 +58,7 @@ export async function proxyFetch(
   };
 
   // Add Supabase anon key for edge function auth
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const anonKey = cfg.supabaseAnonKey;
   if (anonKey) {
     headers['apikey'] = anonKey;
   }
