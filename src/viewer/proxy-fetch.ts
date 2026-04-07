@@ -60,8 +60,8 @@ export async function proxyFetch(
     ...custom,
   };
 
-  // Add Supabase anon key for edge function auth
-  const anonKey = cfg.supabaseAnonKey;
+  // Use Lovable Cloud anon key (not the external project's key)
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || cfg.supabaseAnonKey;
   if (anonKey) {
     headers['apikey'] = anonKey;
   }
