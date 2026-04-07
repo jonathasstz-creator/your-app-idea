@@ -48,9 +48,12 @@ export async function proxyFetch(
   // Since supabase-js doesn't support path suffixes in invoke(), we call fetch directly.
 
   const cfg = getConfig();
-  const supabaseUrl = cfg.supabaseUrl;
+  // Edge functions live on the LOVABLE CLOUD project, not the external Supabase.
+  // Use VITE_SUPABASE_URL (Lovable Cloud) for the proxy URL, NOT cfg.supabaseUrl
+  // which may point to the external project from config.json.
+  const lovableCloudUrl = import.meta.env.VITE_SUPABASE_URL || cfg.supabaseUrl;
 
-  const proxyUrl = `${supabaseUrl}/functions/v1/${PROXY_FN}${path}`;
+  const proxyUrl = `${lovableCloudUrl}/functions/v1/${PROXY_FN}${path}`;
 
   const headers: Record<string, string> = {
     'Accept': 'application/json',
