@@ -47,9 +47,8 @@ export async function proxyFetch(
   // We need to append the upstream path so the proxy can extract it.
   // Since supabase-js doesn't support path suffixes in invoke(), we call fetch directly.
 
-  const supabaseUrl = (supabase as any).supabaseUrl
-    ?? (supabase as any).rest?.url?.replace('/rest/v1', '')
-    ?? import.meta.env.VITE_SUPABASE_URL;
+  const cfg = getConfig();
+  const supabaseUrl = cfg.supabaseUrl;
 
   const proxyUrl = `${supabaseUrl}/functions/v1/${PROXY_FN}${path}`;
 
