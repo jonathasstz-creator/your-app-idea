@@ -8,7 +8,7 @@
  *   const session = await proxyFetch('/v1/sessions', { method: 'POST', body: JSON.stringify(payload) });
  */
 
-import { supabase } from '../integrations/supabase/client';
+import { getConfig } from '../config/app-config';
 import { getAuthTokenFromStorage } from './auth-storage';
 
 const PROXY_FN = 'api-proxy';
@@ -47,9 +47,8 @@ export async function proxyFetch(
   // We need to append the upstream path so the proxy can extract it.
   // Since supabase-js doesn't support path suffixes in invoke(), we call fetch directly.
 
-  const supabaseUrl = (supabase as any).supabaseUrl
-    ?? (supabase as any).rest?.url?.replace('/rest/v1', '')
-    ?? import.meta.env.VITE_SUPABASE_URL;
+  const cfg = getConfig();
+  const supabaseUrl = cfg.supabaseUrl;
 
   const proxyUrl = `${supabaseUrl}/functions/v1/${PROXY_FN}${path}`;
 
@@ -59,7 +58,7 @@ export async function proxyFetch(
   };
 
   // Add Supabase anon key for edge function auth
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const anonKey = cfg.supabaseAnonKey;
   if (anonKey) {
     headers['apikey'] = anonKey;
   }
