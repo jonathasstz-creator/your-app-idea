@@ -136,20 +136,20 @@ describe('NoteFeedbackController', () => {
 
   it('showChordComplete shows checkmark and auto-clears', () => {
     feedback.showChordComplete();
-    expect(el.textContent).toBe('✓');
+    expect(el.textContent).toBe('✓ Certo');
     expect(el.classList.contains('is-chord-complete')).toBe(true);
 
-    vi.advanceTimersByTime(600);
+    vi.advanceTimersByTime(1200);
     expect(el.textContent).toBe('');
     expect(el.className).toBe('judge-feedback');
   });
 
   it('showWrongNote shows error and auto-clears', () => {
     feedback.showWrongNote();
-    expect(el.textContent).toBe('✗');
+    expect(el.textContent).toBe('✗ Errado');
     expect(el.classList.contains('is-wrong-brief')).toBe(true);
 
-    vi.advanceTimersByTime(400);
+    vi.advanceTimersByTime(800);
     expect(el.textContent).toBe('');
   });
 
@@ -172,7 +172,7 @@ describe('NoteFeedbackController', () => {
     feedback.showWrongNote();
     feedback.showChordComplete();
     // Should show chord complete, not wrong
-    expect(el.textContent).toBe('✓');
+    expect(el.textContent).toBe('✓ Certo');
     expect(el.classList.contains('is-chord-complete')).toBe(true);
   });
 });

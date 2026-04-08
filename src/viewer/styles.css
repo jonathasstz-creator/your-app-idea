@@ -2183,17 +2183,25 @@ table {
 /* Note Feedback States */
 .judge-feedback.is-partial {
   color: var(--primary-neon);
-  opacity: 0.85;
+  font-size: 1.1rem;
+  font-weight: 700;
+  opacity: 0.9;
 }
 
 .judge-feedback.is-chord-complete {
   color: var(--success-neon);
-  animation: feedback-flash 0.4s ease;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--success-neon);
+  animation: feedback-flash 0.5s ease;
 }
 
 .judge-feedback.is-wrong-brief {
   color: var(--error-neon);
-  animation: feedback-shake 0.3s ease;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--error-neon);
+  animation: feedback-shake 0.4s ease;
 }
 
 .judge-feedback.is-duplicate-flash {

@@ -102,7 +102,7 @@ export class NoteFeedbackController {
   showChordComplete() {
     if (!this.el) return;
     this.clearFeedbackTimer();
-    this.el.textContent = '✓';
+    this.el.textContent = '✓ Certo';
     this.el.className = 'judge-feedback is-chord-complete';
     this.feedbackTimer = window.setTimeout(() => {
       if (this.el) {
@@ -110,13 +110,13 @@ export class NoteFeedbackController {
         this.el.className = 'judge-feedback';
       }
       this.feedbackTimer = null;
-    }, 600);
+    }, 1200);
   }
 
   showWrongNote() {
     if (!this.el) return;
     this.clearFeedbackTimer();
-    this.el.textContent = '✗';
+    this.el.textContent = '✗ Errado';
     this.el.className = 'judge-feedback is-wrong-brief';
     this.feedbackTimer = window.setTimeout(() => {
       if (this.el) {
@@ -124,7 +124,7 @@ export class NoteFeedbackController {
         this.el.className = 'judge-feedback';
       }
       this.feedbackTimer = null;
-    }, 400);
+    }, 800);
   }
 
   showDuplicate() {
