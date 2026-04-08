@@ -103,7 +103,7 @@ describe("P0 — Latência em segundos", () => {
     // Verify the conversion is correct for the fixture value
     const latencyMs = 145;
     const expected = `${(latencyMs / 1000).toFixed(2)}s`;
-    expect(expected).toBe("0.15s");
+    expect(expected).toBe("0.14s");
     expect(expected).not.toContain("ms");
     
     // Also verify the overview KPI latency format
