@@ -1776,6 +1776,15 @@ const init = async () => {
             pr?.setActiveNote(midiInt, isOn);
         }
 
+        // 2b. Audio feedback — unified for ALL input sources (mouse, keyboard, MIDI)
+        if (audioService.getEnabled()) {
+            if (isOn) {
+                audioService.playMidiNote(midiInt, 0.3, velInt).catch(() => {});
+            } else {
+                audioService.stopNote(midiInt);
+            }
+        }
+
         // 3. Engine Logic (Client-side)
         const viewBefore = engine.getViewState();
 
