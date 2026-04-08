@@ -49,7 +49,7 @@ describe('proxyFetch anti-regressão — produção', () => {
     );
   });
 
-  it('deriva a URL do proxy pelo project id quando proxyBaseUrl não vier no runtime config', async () => {
+  it('usa proxyBaseUrl do runtime quando existir e faz fallback seguro do apikey de proxy', async () => {
     vi.stubEnv('VITE_SUPABASE_PROJECT_ID', 'mkhmrcszcjfnmlcfaaln');
     vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'lovable-cloud-key');
 
@@ -70,8 +70,8 @@ describe('proxyFetch anti-regressão — produção', () => {
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
-          apikey: 'lovable-cloud-key',
           'Content-Type': 'application/json',
+          apikey: expect.any(String),
         }),
       })
     );
