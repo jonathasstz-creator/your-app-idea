@@ -53,7 +53,7 @@ export interface LessonEngineApi {
   reset(): void;
   forceEnd(): void;
   setTimer(timer: { stop: () => void } | null): void;
-  onMidiInput(midi: number, velocity: number, isOn: boolean): { advanced: boolean; result: ResultStatus; score: number; streak: number };
+  onMidiInput(midi: number, velocity: number, isOn: boolean): MidiInputResult;
   judgeFilmNoteOn(
     midi: number,
     velocity: number,
