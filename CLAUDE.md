@@ -76,6 +76,7 @@ Flags atuais e defaults:
 | `useWebSocket` | `false` | Transport WebSocket |
 | `useStepQualityStreak` | `false` | Scoring por qualidade de step (engine V2) |
 | `showStepQualityFeedback` | `false` | Feedback visual no HUD |
+| `enableGuestMode` | `false` | Permite navegação limitada sem login |
 
 ### featureFlagSnapshot em index.tsx
 
