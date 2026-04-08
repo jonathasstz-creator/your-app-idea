@@ -91,7 +91,7 @@ const Home: React.FC<HomeProps> = ({ onStart, isConnected, deviceName, backendCo
       </motion.div>
 
       <footer className="absolute bottom-8 w-full text-center text-slate-600 text-[10px] font-bold uppercase tracking-[0.2em]">
-        Piano Pro v2.0 &bull; Powered by Gemini AI &bull; Built for Masters
+        Piano Trainer &bull; Pratique com Feedback em Tempo Real
       </footer>
     </div>
   );

@@ -542,6 +542,7 @@ Regras de handoff:
 - **Feature flags:**
   - `useStepQualityStreak` (default: `false`) — ativa scoring por qualidade de step no engine.
   - `showStepQualityFeedback` (default: `false`) — ativa feedback visual no HUD (badge, note feedback, chord closure).
+  - `enableGuestMode` (default: `false`) — permite navegação limitada sem login. Quando ativa, `ensureAuthenticated()` retorna `{ status: 'guest' }` em vez de bloquear com overlay de login.
 - **Classificações por step completado:**
   - `PERFECT` — 0 hard errors, 0 soft errors
   - `GREAT` — 0 hard errors, ≤1 soft error

@@ -131,6 +131,8 @@ describe("AnalyticsClient — buildHeaders via fetchOverview", () => {
       analyticsApiUrl: "https://api.test.com",
       analyticsMode: "api",
       enableStaticFallback: true,
+      proxyBaseUrl: "",
+      proxyAnonKey: "",
     });
 
     const { AnalyticsClient } = await import("../analytics-client");
@@ -150,6 +152,8 @@ describe("AnalyticsClient — buildHeaders via fetchOverview", () => {
       analyticsApiUrl: "",
       analyticsMode: "off",
       enableStaticFallback: false,
+      proxyBaseUrl: "",
+      proxyAnonKey: "",
     });
 
     const { AnalyticsClient } = await import("../analytics-client");

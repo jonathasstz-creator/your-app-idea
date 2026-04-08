@@ -168,7 +168,7 @@ const FocusPanel: React.FC<{
       >
         <header className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Focus Mode</div>
+            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Foco</div>
             <h3 className="text-sm font-black text-white tracking-tight">{title}</h3>
           </div>
           <button
@@ -412,10 +412,10 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                       sub="Últimos 7 dias"
                     />
                     <Stat
-                      label="Best Score"
+                      label="Melhor Pontuação"
                       value={isFiniteNumber(kpis?.best_score) ? fmt1(kpis?.best_score) : "—"}
                       color="text-amber-400"
-                      sub="Melhor pontuação"
+                      sub="Recorde pessoal"
                     />
                   </div>
                 </Card>
