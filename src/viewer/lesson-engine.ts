@@ -586,6 +586,7 @@ class LessonEngineV2 implements LessonEngineApi {
     this.lastResultStep = -1;
     this.judgedSteps.clear();
     this.stepState.clear();
+    this.chordFirstHitTime = null;
     this.activeStep = null;
     this.attemptLog = [];
     this.stepStartTime = Date.now();
