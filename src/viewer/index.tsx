@@ -555,6 +555,11 @@ const init = async () => {
     // Instantiate lessonTimer
     lessonTimer = new LessonTimer((ms) => ui.updateTimer(ms));
     let engine: LessonEngineApi = createEngineV1();
+    const syncEngineStepQualityFlag = () => {
+        if (currentSchemaVersion === 2) {
+            engine.setUseStepQuality(!!featureFlagSnapshot.useStepQualityStreak);
+        }
+    };
     const orchestrator = new LessonOrchestrator();
     const transportClient = new LocalTransportDriver();
     const transportMetronome = new TransportMetronome();
@@ -830,6 +835,15 @@ const init = async () => {
     let debugLastNote: string | null = null;
     const pressedKeyboardKeys = new Set<string>();
     let keyboardListenersAttached = false;
+
+    const releasePressedKeyboardKeys = () => {
+        if (!pressedKeyboardKeys.size) return;
+        pressedKeyboardKeys.forEach((key) => {
+            const midi = KEY_TO_MIDI[key];
+            if (midi) handleNoteInput(midi, 0, "keyboard");
+        });
+        pressedKeyboardKeys.clear();
+    };
 
     // --- React Roots ---
     const homeReactRoot = homeRoot ? createRoot(homeRoot) : null;
@@ -1631,10 +1645,7 @@ const init = async () => {
                     .map(({ step }) => step);
                 lessonSteps = orderedSteps;
                 engine = createEngineV2();
-                // PR2: Wire step quality flag from feature flags into engine
-                if (featureFlagSnapshot.useStepQualityStreak) {
-                    engine.setUseStepQuality(true);
-                }
+                syncEngineStepQualityFlag();
                 engine.setTimer(lessonTimer); // 🔒 wire timer so forceEnd() stops the HUD interval
                 sessionController = new LessonSessionController({ timer: lessonTimer, frameLoop: transportClient, engine });
                 setupEngineEndCallback(); // PR2: Setup endscreen callback
@@ -2058,25 +2069,36 @@ const init = async () => {
         const key = event.key.toLowerCase();
         if (!pressedKeyboardKeys.has(key)) return;
 
+        pressedKeyboardKeys.delete(key);
         const midi = KEY_TO_MIDI[key];
         if (midi) handleNoteInput(midi, 0, "keyboard");
+    };
 
-        pressedKeyboardKeys.delete(key);
+    const handleKeyboardBlur = () => {
+        releasePressedKeyboardKeys();
+    };
+
+    const handleKeyboardVisibilityChange = () => {
+        if (document.hidden) releasePressedKeyboardKeys();
     };
 
     const attachKeyboardListeners = () => {
         if (keyboardListenersAttached) return;
         window.addEventListener("keydown", handleDebugKeyDown);
         window.addEventListener("keyup", handleDebugKeyUp);
+        window.addEventListener("blur", handleKeyboardBlur);
+        document.addEventListener("visibilitychange", handleKeyboardVisibilityChange);
         keyboardListenersAttached = true;
     };
 
     const detachKeyboardListeners = () => {
+        releasePressedKeyboardKeys();
         if (!keyboardListenersAttached) return;
         window.removeEventListener("keydown", handleDebugKeyDown);
         window.removeEventListener("keyup", handleDebugKeyUp);
+        window.removeEventListener("blur", handleKeyboardBlur);
+        document.removeEventListener("visibilitychange", handleKeyboardVisibilityChange);
         keyboardListenersAttached = false;
-        pressedKeyboardKeys.clear();
     };
 
     const syncDebugInputState = () => {
@@ -2099,13 +2121,6 @@ const init = async () => {
                 pr?.setKeyboardLabels(MIDI_TO_KEY_LABEL);
             }
         } else {
-            if (pressedKeyboardKeys.size) {
-                pressedKeyboardKeys.forEach((key) => {
-                    const midi = KEY_TO_MIDI[key];
-                    if (midi) handleNoteInput(midi, 0, "keyboard");
-                });
-                pressedKeyboardKeys.clear();
-            }
             detachKeyboardListeners();
             if (featureFlagSnapshot.showFallingNotes) {
                 const pr = ensurePianoRoll();
@@ -2120,6 +2135,8 @@ const init = async () => {
         if (flagSheetToggle) flagSheetToggle.checked = featureFlagSnapshot.showSheetMusic;
         if (flagFallingToggle) flagFallingToggle.checked = featureFlagSnapshot.showFallingNotes;
         if (flagHideHudToggle) flagHideHudToggle.checked = featureFlagSnapshot.hideHud;
+        if (flagStepQualityStreakToggle) flagStepQualityStreakToggle.checked = featureFlagSnapshot.useStepQualityStreak;
+        if (flagStepQualityFeedbackToggle) flagStepQualityFeedbackToggle.checked = featureFlagSnapshot.showStepQualityFeedback;
         applyHideHud(featureFlagSnapshot.hideHud);
     };
 
@@ -2142,6 +2159,7 @@ const init = async () => {
     featureFlags.subscribe((next, meta) => {
         featureFlagSnapshot = next;
         syncFlagToggles();
+        syncEngineStepQualityFlag();
         if (!next.showSheetMusic) {
             destroySheet();
             sheetSection.classList.add('is-hidden');
