@@ -19,6 +19,8 @@ import type { StatsViewModel } from "../analytics-client";
 
 const baseStats: StatsViewModel = {
   version: 2,
+  generated_at: "2026-03-31T12:00:00Z",
+  user_id: "test-user-1",
   range: { from: "2026-03-01", to: "2026-03-31" },
   kpis: {
     sessions_7d: 5,
