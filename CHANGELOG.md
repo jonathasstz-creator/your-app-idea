@@ -1,5 +1,40 @@
 # Changelog
 
+## [2026-04-08] - Audio: Síntese piano-like + Pipeline de input unificado
+
+### Resumo
+Reescrita completa do `AudioService` com síntese em camadas (triangle + harmônicos) e compressor dinâmico. Pipeline de áudio unificado em `handleNoteInput` — mouse, keyboard e MIDI agora produzem som pelo mesmo ponto. Auto-play de falling notes desligado por padrão.
+
+### O que mudou
+
+#### `src/viewer/audio-service.ts` (reescrito)
+- **Síntese em camadas:** triangle (fundamental) + sine (oitava acima, 15%) + sine (3ª harmônica, 5% com decay rápido). Substitui oscilador sine puro que causava chiado.
+- **Compressor dinâmico:** `DynamicsCompressorNode` com threshold -24dB, ratio 4:1. Elimina clipping e harshness.
+- **Envelope ADSR adaptativo:** decay e release escalam proporcionalmente à duração da nota, evitando artefatos em notas curtas (< 0.3s).
+- **Velocity quadrática:** `(vel/127)² × 0.35` para resposta mais natural.
+- **Auto-play falling notes:** novo `setAutoPlayFalling(on)` / `getAutoPlayFalling()`, desligado por padrão.
+
+#### `src/viewer/index.tsx` (handleNoteInput)
+- **Áudio centralizado:** `handleNoteInput` agora toca/para áudio para TODOS os inputs (mouse, keyboard, MIDI). Antes, só mouse via piano-roll-controller tinha áudio.
+
+#### `src/viewer/piano-roll-controller.ts`
+- **Removido áudio duplicado:** `playNote()` e `stopNote()` não chamam mais `audioService` diretamente. Áudio é responsabilidade exclusiva de `handleNoteInput`.
+- **Auto-play gated:** falling notes auto-play agora verifica `getAutoPlayFalling()` além de `getEnabled()`.
+
+### Testes adicionados (27 novos, 2 arquivos)
+| Arquivo | Cobertura |
+|---------|-----------|
+| `audio-input-pipeline.test.ts` | Estado do AudioService, autoPlayFalling, convergência de pipeline, gates de enabled/debug |
+| `audio-step-quality-convergence.test.ts` | Áudio unificado por source, Step Quality source-independent, anti-double-trigger |
+
+### Impacto
+- Som mais rico e limpo (piano-like vs sine buzzy).
+- Mouse Piano Input e Keyboard Input agora produzem som.
+- Step Quality feedback funciona identicamente para mouse, keyboard e MIDI.
+- Notas não tocam sozinhas sem interação do usuário.
+
+---
+
 ## [2026-04-08] - HUD UX: Score/Streak Sticky + Status Priority + Step Quality Flag Toggles
 
 ### Resumo

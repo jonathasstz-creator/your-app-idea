@@ -2,7 +2,7 @@
 
 Contexto operacional para agentes de IA. Fonte de verdade para fluxo real, paths canônicos e comportamento atual.
 
-> **Última atualização:** 2026-04-08 — Boot state machine (single owner via `window.__appBoot__`), failure path fix, config validation hardened.
+> **Última atualização:** 2026-04-08 — Audio pipeline unificado (mouse/keyboard/MIDI), síntese piano-like, auto-play falling notes gated.
 
 ---
 
@@ -15,6 +15,7 @@ Contexto operacional para agentes de IA. Fonte de verdade para fluxo real, paths
 | Pasta canônica | `src/viewer/` |
 | Pasta legado (NÃO editar) | `viewer/` (raiz) |
 | Config runtime | `src/config/app-config.ts` |
+| Audio service | `src/viewer/audio-service.ts` |
 | Proxy fetch centralizado | `src/viewer/proxy-fetch.ts` |
 | Edge Function proxy | `supabase/functions/api-proxy/index.ts` |
 | Feature flags types | `src/viewer/feature-flags/types.ts` |
