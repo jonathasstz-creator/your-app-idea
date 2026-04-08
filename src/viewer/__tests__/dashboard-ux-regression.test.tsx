@@ -208,23 +208,26 @@ describe("P1 — Suggestion em destaque", () => {
 /* ── P1: Chapter recommendation ────────────── */
 
 describe("P1 — Chapter recommendation", () => {
-  it("renderiza recommendation.label quando presente", () => {
-    const { container } = render(<Dashboard stats={baseStats} status="live" />);
+  it("renderiza recommendation.label quando presente", async () => {
+    const { container, rerender } = render(<Dashboard stats={baseStats} status="live" />);
     const lessonsTab = Array.from(container.querySelectorAll("button")).find((b) =>
       b.textContent?.includes("LIÇÕES")
     );
-    act(() => { lessonsTab?.click(); });
+    await act(async () => { lessonsTab?.click(); });
+    // Force re-render to flush framer-motion
+    await act(async () => { rerender(<Dashboard stats={baseStats} status="live" />); });
 
     expect(container.textContent).toContain("Pratique mais");
     expect(container.textContent).toContain("Precisão abaixo de 90%");
   });
 
-  it("não quebra quando recommendation é null", () => {
-    const { container } = render(<Dashboard stats={baseStats} status="live" />);
+  it("não quebra quando recommendation é null", async () => {
+    const { container, rerender } = render(<Dashboard stats={baseStats} status="live" />);
     const lessonsTab = Array.from(container.querySelectorAll("button")).find((b) =>
       b.textContent?.includes("LIÇÕES")
     );
-    act(() => { lessonsTab?.click(); });
+    await act(async () => { lessonsTab?.click(); });
+    await act(async () => { rerender(<Dashboard stats={baseStats} status="live" />); });
 
     // Chapter 2 has null recommendation — should still render without crash
     expect(container.textContent).toContain("Acordes Básicos");
