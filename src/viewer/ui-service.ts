@@ -193,4 +193,11 @@ export class UIService {
       this.feedback.className = "judge-feedback";
     }
   }
+
+  setShowStreak(enabled: boolean) {
+    this.showStreakFlag = enabled;
+    if (this.hudStreak) {
+      this.hudStreak.style.display = enabled && this.streakShown ? "block" : (enabled ? "" : "none");
+    }
+  }
 }
