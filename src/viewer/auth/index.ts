@@ -4,17 +4,20 @@ import { supabase } from './supabaseClient';
 import AuthShell from './AuthShell';
 import { syncSessionToLegacyStorage } from '../auth-storage';
 import { isAuthConfigured, getConfig, isDev } from '../../config/app-config';
+import { featureFlags } from '../feature-flags/store';
 
 export type AuthBootstrapResult =
   | { status: 'authenticated' }
   | { status: 'unauthenticated' }
-  | { status: 'disabled' };
+  | { status: 'disabled' }
+  | { status: 'guest' };
 
 /**
  * Ensures the user is authenticated.
  * 
  * - If auth config is missing → returns 'disabled' (app works offline).
  * - If session exists → returns 'authenticated'.
+ * - If enableGuestMode flag is ON and no session → returns 'guest' (limited browsing).
  * - If no session → renders login overlay and BLOCKS until user logs in,
  *   then returns 'authenticated'. No internal UI is shown before auth.
  */
@@ -41,6 +44,13 @@ export async function ensureAuthenticated(): Promise<AuthBootstrapResult> {
   if (session) {
     syncSessionToLegacyStorage({ access_token: session.access_token, refresh_token: session.refresh_token });
     return { status: 'authenticated' };
+  }
+
+  // ── Guest mode: allow limited browsing without login ───────────
+  const guestMode = featureFlags.snapshot().enableGuestMode;
+  if (guestMode) {
+    console.log('[AUTH] Guest mode ativo — permitindo navegação limitada sem login.');
+    return { status: 'guest' };
   }
 
   // ── No session: show auth overlay and BLOCK until user logs in ──
@@ -73,13 +83,10 @@ export async function ensureAuthenticated(): Promise<AuthBootstrapResult> {
       root.unmount();
       overlay.remove();
       window.dispatchEvent(new CustomEvent('auth:success'));
-      // NOW resolve — app init only starts after successful login
       resolve({ status: 'authenticated' });
     };
 
     root.render(React.createElement(AuthShell, { onAuthenticated: handleAuthenticated }));
-
-    // DO NOT resolve here — block until user authenticates
   });
 }
 
