@@ -4,6 +4,41 @@ Runbooks de diagnóstico para problemas operacionais conhecidos.
 
 ---
 
+## Runbook — HUD Score/Streak/Status instável
+
+### Sintomas
+- Score desaparece ao finalizar lição
+- Streak some quando o status muda para FINISHED
+- Status "pisca" entre HIT/WAITING rapidamente
+- Status mostra WAITING depois de já ter mostrado FINISHED
+
+### Diagnóstico
+
+#### 1. Verificar se UIService tem lógica de sticky visibility
+```js
+// O score deve permanecer visível mesmo se updateHud for chamado sem scoreTotal
+// Verificar src/viewer/ui-service.ts — campos scoreShown, streakShown, isTerminal
+```
+
+#### 2. Verificar chamadas de updateHud sem scoreTotal
+Procurar em `src/viewer/index.tsx` por chamadas `ui.updateHud({ ... status: "FINISHED" })` que omitem `scoreTotal` e `streak`. Essas chamadas **não devem** esconder os valores.
+
+#### 3. Verificar status terminal
+```js
+// Após FINISHED, qualquer updateHud com outro status (exceto RESET) deve ser ignorado
+// Testar no console: observer o HUD-status não mudar após FINISHED
+```
+
+### Resolução conhecida (2026-04-08)
+- `UIService` implementa sticky visibility + status terminal lock
+- Testes: `hud-score-visibility-regression.test.ts`, `hud-status-priority-regression.test.ts`, `hud-streak-combo-regression.test.ts`
+
+---
+
+Runbooks de diagnóstico para problemas operacionais conhecidos.
+
+---
+
 ## Runbook — CORS / Proxy / Requisições falhando
 
 ### Sintomas
