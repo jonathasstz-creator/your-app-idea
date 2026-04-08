@@ -204,7 +204,7 @@ class LessonEngineV1 implements LessonEngineApi {
     this.timer = timer;
   }
 
-  onMidiInput(midi: number, velocity: number, isOn: boolean): { advanced: boolean; result: ResultStatus; score: number; streak: number } {
+  onMidiInput(midi: number, velocity: number, isOn: boolean): MidiInputResult {
     if (this.isEnded || !this.lesson || !isOn || velocity === 0) {
       return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
     }
@@ -622,7 +622,7 @@ class LessonEngineV2 implements LessonEngineApi {
     this.timer = timer;
   }
 
-  onMidiInput(midi: number, velocity: number, isOn: boolean): { advanced: boolean; result: ResultStatus; score: number; streak: number } {
+  onMidiInput(midi: number, velocity: number, isOn: boolean): MidiInputResult {
     if (this.isEnded || !this.lesson || !isOn || velocity === 0) {
       return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
     }
