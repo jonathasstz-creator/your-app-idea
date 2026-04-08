@@ -260,7 +260,9 @@ export function computeTaskResult(
 
 /**
  * V1: Calcula stats POR NOTA (monofônico)
- * Agrupa por MIDI, ignora acordes
+ * Agrupa por EXPECTED MIDI (nota esperada), não pela nota tocada.
+ * Isso garante que erros são atribuídos à nota correta do exercício,
+ * e notas "fantasma" (tecla errada) não aparecem nos stats.
  */
 function computePerNoteStatsV1(attempts: AttemptLog[]): PerNoteStatV1[] {
   const byMidi = new Map<
@@ -274,12 +276,12 @@ function computePerNoteStatsV1(attempts: AttemptLog[]): PerNoteStatV1[] {
   >();
 
   for (const attempt of attempts) {
-    // Se for acorde, explode
-    const midiArray = Array.isArray(attempt.midi)
-      ? attempt.midi
-      : [attempt.midi];
+    // Group by EXPECTED note (the exercise note), not the played note
+    const expectedArray = Array.isArray(attempt.expected)
+      ? attempt.expected
+      : [attempt.expected];
 
-    for (const midi of midiArray) {
+    for (const midi of expectedArray) {
       if (!byMidi.has(midi)) {
         byMidi.set(midi, {
           correct: 0,
