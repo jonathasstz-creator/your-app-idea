@@ -1,12 +1,14 @@
 /**
- * ENDSCREEN V1 - MONOFÔNICO v1.1
+ * ENDSCREEN V1 - MONOFÔNICO v1.2
  * Arquivo: viewer/components/Endscreen/EndscreenV1.tsx
  *
- * Novidades v1.1:
- * - Animação de celebração ao bater recorde (pontuação, tempo, reflexo)
- * - Seção "Recordes Pessoais" com comparação vs sessões anteriores
- * - Partículas CSS ao bater recorde de pontuação
- * - Banner deslizante com delta vs recorde anterior
+ * v1.2: UX clarity rewrite
+ * - Score explained visually (X notas × 100 pts)
+ * - "Respostas Corretas" → "Notas Acertadas"
+ * - "Acurácia" → "Aproveitamento"
+ * - "Tempo Médio" → "Tempo médio por nota"
+ * - perNote stats: clarified as "tentativas" (includes retries)
+ * - Layout: score integrated into summary, not isolated box
  *
  * 🔒 ZERO QUEBRAS: overlay isolado, sem alterar áudio/timing
  */
@@ -88,7 +90,6 @@ const RecordBanner: React.FC<RecordBannerProps> = ({
     return `${ms}ms mais rápido`;
   };
 
-  // Determinar a mensagem principal
   const allThree = isNewScoreRecord && isNewTimeRecord && isNewResponseRecord;
   const two = [isNewScoreRecord, isNewTimeRecord, isNewResponseRecord].filter(Boolean).length === 2;
 
@@ -109,8 +110,6 @@ const RecordBanner: React.FC<RecordBannerProps> = ({
     title = "DUPLO RECORDE!";
     subtitle = parts.join(" e ");
   } else if (isNewScoreRecord) {
-    icon = "🏆";
-    title = "NOVO RECORDE!";
     subtitle = scoreDelta ? `+${scoreDelta} pts acima do seu recorde` : "";
   } else if (isNewTimeRecord) {
     icon = "⚡";
@@ -167,7 +166,6 @@ const RecordsSection: React.FC<RecordsSectionProps> = ({ result }) => {
     return `${s.toFixed(1)}s`;
   };
 
-  // 1ª sessão: nenhum recorde anterior — mensagem de "baseline registrado"
   if (sessionCount === 1) {
     return (
       <motion.div
@@ -188,24 +186,22 @@ const RecordsSection: React.FC<RecordsSectionProps> = ({ result }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.25 }}
     >
-      <span className="pb-records-title">Recordes pessoais</span>
+      <span className="pb-records-title">Seus melhores resultados</span>
 
       <div className="pb-records-grid">
-        {/* Pontuação */}
         <div className={`pb-record-row ${isNewScoreRecord ? "pb-record-new" : ""}`}>
           <span className="pb-record-icon">🏆</span>
-          <span className="pb-record-label">Pontuação</span>
+          <span className="pb-record-label">Melhor pontuação</span>
           <span className="pb-record-value">
             {highScore ?? "--"} pts
             {isNewScoreRecord && <span className="pb-new-badge">novo</span>}
           </span>
         </div>
 
-        {/* Tempo total */}
         {bestTime !== undefined && (
           <div className={`pb-record-row ${isNewTimeRecord ? "pb-record-new" : ""}`}>
             <span className="pb-record-icon">⚡</span>
-            <span className="pb-record-label">Melhor tempo</span>
+            <span className="pb-record-label">Mais rápido</span>
             <span className="pb-record-value">
               {formatTime(bestTime)}
               {isNewTimeRecord && <span className="pb-new-badge">novo</span>}
@@ -213,7 +209,6 @@ const RecordsSection: React.FC<RecordsSectionProps> = ({ result }) => {
           </div>
         )}
 
-        {/* Reflexo médio */}
         {bestResponseTime !== undefined && (
           <div className={`pb-record-row ${isNewResponseRecord ? "pb-record-new" : ""}`}>
             <span className="pb-record-icon">⏱️</span>
@@ -225,10 +220,9 @@ const RecordsSection: React.FC<RecordsSectionProps> = ({ result }) => {
           </div>
         )}
 
-        {/* Sessões */}
         <div className="pb-record-row pb-record-sessions">
           <span className="pb-record-icon">🔁</span>
-          <span className="pb-record-label">Sessões</span>
+          <span className="pb-record-label">Vezes praticada</span>
           <span className="pb-record-value">{sessionCount}×</span>
         </div>
       </div>
@@ -283,6 +277,10 @@ export const EndscreenV1: React.FC<EndscreenV1Props> = ({
 
   const percentage = Math.round((result.correctSteps / result.totalSteps) * 100);
 
+  // Filter perNote to only show notes with <100% accuracy (the ones that matter)
+  const notesWithErrors = result.perNote.filter((n) => n.pct < 100);
+  const allPerfect = notesWithErrors.length === 0;
+
   return (
     <div className="endscreen-overlay-v1">
       <div className="endscreen-backdrop-v1" onClick={handleClose} />
@@ -294,7 +292,7 @@ export const EndscreenV1: React.FC<EndscreenV1Props> = ({
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
       >
-        {/* Banner de novo recorde (slide-in com delay) */}
+        {/* Banner de novo recorde */}
         <AnimatePresence>
           {anyRecord && (
             <RecordBanner
@@ -323,54 +321,66 @@ export const EndscreenV1: React.FC<EndscreenV1Props> = ({
           </div>
         </div>
 
-        {/* Summary */}
+        {/* Summary — clear, human-readable */}
         <div className="endscreen-summary-v1">
           <div className="summary-row">
-            <span className="label">Respostas Corretas</span>
-            <span className="value">{result.correctSteps} / {result.totalSteps}</span>
+            <span className="label">Notas acertadas</span>
+            <span className="value">{result.correctSteps} de {result.totalSteps}</span>
           </div>
           <div className="summary-row">
-            <span className="label">Acurácia</span>
+            <span className="label">Aproveitamento</span>
             <span className="value percentage">{percentage}%</span>
           </div>
           {result.duration !== undefined && (
             <div className="summary-row">
-              <span className="label">Tempo Total</span>
+              <span className="label">Duração da sessão</span>
               <span className="value">{formatDuration(result.duration)}</span>
             </div>
           )}
           {result.responseMsAvg !== undefined && (
             <div className="summary-row">
-              <span className="label">Tempo Médio</span>
+              <span className="label">Tempo médio por nota</span>
               <span className="value">{(result.responseMsAvg / 1000).toFixed(2)}s</span>
             </div>
           )}
         </div>
 
-        {/* Score Box */}
+        {/* Score Box — with explanation */}
         <div className={`endscreen-scorebox-v1 ${result.isNewScoreRecord ? "pb-score-record" : ""}`}>
           {result.isNewScoreRecord && <RecordParticles />}
           <div className={`score-value ${result.isNewScoreRecord ? "pb-score-burst" : ""}`}>
             {result.totalScore}
           </div>
           <div className="score-label">Pontuação</div>
+          <div className="score-explain">
+            {result.correctSteps} nota{result.correctSteps !== 1 ? "s" : ""} × 100 pts
+          </div>
         </div>
 
         {/* Seção de Recordes Pessoais */}
         <RecordsSection result={result} />
 
-        {/* Per-Note Stats */}
+        {/* Per-Note Stats — only show notes that had errors */}
         {result.perNote.length > 0 && (
           <div className="endscreen-stats-v1">
-            <h3 className="stats-title">Desempenho por Nota</h3>
+            <h3 className="stats-title">
+              {allPerfect ? "Todas as notas perfeitas! 🎯" : "Notas para melhorar"}
+            </h3>
+            {!allPerfect && (
+              <p className="stats-subtitle">
+                Mostrando as notas onde você errou pelo menos uma vez
+              </p>
+            )}
             <div className="stats-list">
-              {result.perNote
-                .sort((a, b) => b.pct - a.pct)
+              {(allPerfect ? result.perNote.slice(0, 5) : notesWithErrors)
+                .sort((a, b) => a.pct - b.pct)
                 .map((note, idx) => (
                   <div key={idx} className="stat-row">
                     <div className="stat-note">
                       <span className="note-name">{note.label || note.noteName}</span>
-                      <span className="note-count">{note.correct}/{note.total}</span>
+                      <span className="note-count">
+                        {note.correct}/{note.total} {allPerfect ? "" : "tentativas"}
+                      </span>
                     </div>
                     <div className="stat-bar">
                       <div
@@ -399,7 +409,7 @@ export const EndscreenV1: React.FC<EndscreenV1Props> = ({
           <button className="btn-action btn-secondary" onClick={onBack} title="Voltar para seleção">
             ← Voltar
           </button>
-          <button className="btn-action btn-primary" onClick={onRepeat} title="Repetir esta tarefa">
+          <button className="btn-action btn-primary" onClick={onRepeat} title="Repetir esta lição">
             🔄 Repetir
           </button>
         </div>
