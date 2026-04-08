@@ -1,5 +1,26 @@
 # Changelog
 
+## [2026-04-08] - Documentação: Consolidação operacional pós Step Quality fix
+
+### Resumo
+Atualização completa da documentação operacional refletindo o estado real do sistema após os fixes de Step Quality UX/HUD (wiring lifecycle, flag toggle anti-flicker, V1 feedback, audio pipeline).
+
+### Documentos atualizados
+- **COOKBOOK.md** — Adicionadas receitas de Step Quality: ativação de flags, diagnóstico rápido, simulação V2 WAIT, verificação de controllers, confirmação de path de execução.
+- **RUNBOOK.md** — Já atualizado com runbook de Step Quality, CORS/proxy, flag flicker.
+- **AGENTS.md** — Já atualizado com Step Quality system, TDD policy, armadilhas de wiring.
+- **CLAUDE.md** — Já atualizado com guards, flag snapshot, audio pipeline, Step Quality real behavior.
+
+### Verdades operacionais consolidadas
+1. Controllers de UI são instanciados **sempre** no boot (não dependem de flag)
+2. `featureFlagSnapshot` é atualizado via `subscribe()` — runtime toggle funciona
+3. Note feedback (✓/✗) funciona para V1 e V2; badge é V2-only
+4. Step Quality exige modo WAIT; FILM usa streak legado
+5. Unit tests **não** detectam bugs de wiring em `index.tsx`
+6. Debugging requer verificar: flags → DOM → schema → mode → guards
+
+---
+
 ## [2026-04-08] - Step Quality: Feedback V1 + Flag toggle anti-flicker
 
 ### Resumo

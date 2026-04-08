@@ -129,3 +129,93 @@ Ao mudar flag via console, procure:
 ```
 
 Se não aparecer, o `featureFlags.subscribe()` foi removido ou não executou.
+
+---
+
+## Step Quality — Receitas completas
+
+### Ativar Step Quality completo (badge + note feedback)
+
+```js
+window.__flags.set('showStepQualityFeedback', true);
+window.__flags.set('useStepQualityStreak', true);
+```
+
+### Ativar apenas note feedback (✓/✗) sem badge
+
+```js
+window.__flags.set('showStepQualityFeedback', true);
+window.__flags.set('useStepQualityStreak', false);
+```
+
+### Verificar se controllers estão instanciados
+
+```js
+// Estes elementos devem existir SEMPRE (controllers são criados incondicionalmente)
+['hud-quality-badge', 'judge-feedback', 'hud-step'].forEach(id => {
+  const el = document.getElementById(id);
+  console.log(id, el ? '✅ exists' : '❌ missing (problema de HTML)');
+});
+```
+
+### Confirmar versão do schema da lição carregada
+
+```js
+// No console, ao carregar uma lição:
+// V2: "[v2:polyphonic] lesson loaded"
+// V1: ausência do log acima
+// Badge (Perfeito/Ótimo) → V2-only
+// Note feedback (✓/✗) → V1 e V2
+```
+
+### Simular cenário V2 WAIT (step quality completo)
+
+1. Ativar flags:
+```js
+window.__flags.set('showStepQualityFeedback', true);
+window.__flags.set('useStepQualityStreak', true);
+```
+2. Selecionar capítulo 31+ (polifonia/acordes → schema V2)
+3. Confirmar modo WAIT (padrão para prática)
+4. Tocar notas:
+   - Nota correta → ✓ + badge (PERFECT se sem erros)
+   - Nota errada → ✗
+   - Acorde parcial → ♪ x/y
+   - Acorde completo → ✓ + pulse + badge
+
+### Confirmar path de execução do feedback
+
+Ao tocar notas com flags ativas, verificar no console:
+```
+[StepQuality:feedback] schema=2 hit=true chordSize=3
+```
+
+Se não aparecer:
+1. `showStepQualityFeedback` está `false` → ative a flag
+2. Modo é FILM → mude para WAIT
+3. Engine é `null` → lição não carregou
+4. `isEnded()` → lição já terminou
+
+### Verificar streak numérico (x3, x5...)
+
+```js
+// Flag que controla visibilidade do streak counter
+window.__flags.snapshot().showStreakCounter
+// Para esconder: window.__flags.set('showStreakCounter', false)
+// Para mostrar:  window.__flags.set('showStreakCounter', true)
+```
+
+### Diagnóstico rápido — por que o feedback não aparece?
+
+```js
+// Execute tudo de uma vez:
+const snap = window.__flags.snapshot();
+console.table({
+  'showStepQualityFeedback': snap.showStepQualityFeedback,
+  'useStepQualityStreak': snap.useStepQualityStreak,
+  'showStreakCounter': snap.showStreakCounter,
+  'badge DOM': !!document.getElementById('hud-quality-badge'),
+  'feedback DOM': !!document.getElementById('judge-feedback'),
+  'step DOM': !!document.getElementById('hud-step'),
+});
+```
