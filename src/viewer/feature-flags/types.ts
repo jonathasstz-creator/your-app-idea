@@ -7,7 +7,8 @@ export type FeatureFlagName =
   | 'useStepQualityStreak'
   | 'showStepQualityFeedback'
   | 'enableMidiOnboarding'
-  | 'hideHud';
+  | 'hideHud'
+  | 'enableGuestMode';
 
 export type FeatureFlags = Record<FeatureFlagName, boolean>;
 export type FlagSource = 'default' | 'localStorage' | 'remote' | 'runtime';
@@ -32,4 +33,5 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   showStepQualityFeedback: false,
   enableMidiOnboarding: false,
   hideHud: false,
+  enableGuestMode: false,
 };

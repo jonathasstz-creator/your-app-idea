@@ -174,8 +174,7 @@ export class UIService {
     const totalSec = Math.floor(ms / 1000);
     const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
     const sec = String(totalSec % 60).padStart(2, '0');
-    const cs = String(Math.floor((ms % 1000) / 10)).padStart(2, '0');
-    this.hudTimer.textContent = `${min}:${sec}.${cs}`;
+    this.hudTimer.textContent = `${min}:${sec}`;
   }
 
   setFeedback(correct: boolean | null) {
