@@ -46,6 +46,7 @@ const baseStats: StatsViewModel = {
       hits: 40,
       misses: 5,
       latency_avg_ms: 145,
+      late: 2,
       duration_sec: 300,
     },
   ],
