@@ -436,6 +436,8 @@ const init = async () => {
     const flagSheetToggle = document.getElementById("flag-sheet-toggle") as HTMLInputElement | null;
     const flagFallingToggle = document.getElementById("flag-falling-toggle") as HTMLInputElement | null;
     const flagHideHudToggle = document.getElementById("flag-hide-hud-toggle") as HTMLInputElement | null;
+    const flagStepQualityStreakToggle = document.getElementById("flag-step-quality-streak-toggle") as HTMLInputElement | null;
+    const flagStepQualityFeedbackToggle = document.getElementById("flag-step-quality-feedback-toggle") as HTMLInputElement | null;
     const hudGlassEl = document.querySelector<HTMLElement>(".hud-glass");
     const hudActionsEl = document.querySelector<HTMLElement>(".hud-actions");
     const hudRestoreBtn = document.getElementById("hud-restore-btn") as HTMLButtonElement | null;
@@ -531,6 +533,19 @@ const init = async () => {
     flagHideHudToggle?.addEventListener("change", () => {
         featureFlags.set("hideHud", !!flagHideHudToggle.checked, "runtime");
     });
+    // Step Quality flag toggles
+    if (flagStepQualityStreakToggle) {
+        flagStepQualityStreakToggle.checked = featureFlagSnapshot.useStepQualityStreak;
+        flagStepQualityStreakToggle.addEventListener("change", () => {
+            featureFlags.set("useStepQualityStreak", !!flagStepQualityStreakToggle.checked, "runtime");
+        });
+    }
+    if (flagStepQualityFeedbackToggle) {
+        flagStepQualityFeedbackToggle.checked = featureFlagSnapshot.showStepQualityFeedback;
+        flagStepQualityFeedbackToggle.addEventListener("change", () => {
+            featureFlags.set("showStepQualityFeedback", !!flagStepQualityFeedbackToggle.checked, "runtime");
+        });
+    }
 
     // --- Logic Instances ---
     const audioService = new AudioService();
