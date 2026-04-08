@@ -95,19 +95,14 @@ describe('AudioService — ADSR envelope safety', () => {
 
 describe('Input pipeline convergence', () => {
   it('mouse, keyboard, and midi sources all call the same handler signature', () => {
-    // This test validates the contract: all sources produce (midi, velocity, source)
     type InputSource = 'mouse' | 'keyboard' | 'midi';
-    const handler = vi.fn<[number, number, InputSource], void>();
+    const handler = vi.fn();
 
-    // Simulate mouse input
-    handler(60, 100, 'mouse');
-    // Simulate keyboard input
-    handler(62, 96, 'keyboard');
-    // Simulate MIDI input
-    handler(64, 127, 'midi');
+    handler(60, 100, 'mouse' as InputSource);
+    handler(62, 96, 'keyboard' as InputSource);
+    handler(64, 127, 'midi' as InputSource);
 
     expect(handler).toHaveBeenCalledTimes(3);
-    // All calls have same shape: (midi: number, velocity: number, source: string)
     for (const call of handler.mock.calls) {
       expect(typeof call[0]).toBe('number');
       expect(typeof call[1]).toBe('number');
@@ -116,16 +111,14 @@ describe('Input pipeline convergence', () => {
   });
 
   it('note-off events use velocity=0 for all sources', () => {
-    type InputSource = 'mouse' | 'keyboard' | 'midi';
-    const handler = vi.fn<[number, number, InputSource], void>();
+    const handler = vi.fn();
 
-    // All sources use velocity=0 for note-off
     handler(60, 0, 'mouse');
     handler(62, 0, 'keyboard');
     handler(64, 0, 'midi');
 
     for (const call of handler.mock.calls) {
-      expect(call[1]).toBe(0); // velocity=0 means note-off
+      expect(call[1]).toBe(0);
     }
   });
 
