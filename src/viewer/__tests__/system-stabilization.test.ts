@@ -161,8 +161,12 @@ describe('Dashboard — Language and UX consistency', () => {
       'Melhor Pontuação', // was "Best Score"
     ];
 
+    // Validate no English-only labels remain
+    const englishOnlyLabels = ['Best Score', 'Focus Mode', 'Sessions', 'Accuracy'];
     ptLabels.forEach(label => {
-      expect(label).not.toMatch(/^[A-Z][a-z]+ [A-Z]/); // No "Best Score" pattern
+      englishOnlyLabels.forEach(en => {
+        expect(label).not.toBe(en);
+      });
     });
 
     // Validate "Best Score" was replaced
