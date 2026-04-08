@@ -48,12 +48,14 @@ describe('V2 WAIT — Chord simultaneity window', () => {
     const r1 = engine.onMidiInput(60, 80, true);
     expect(r1.advanced).toBe(false);
     expect(r1.result).toBe('HIT');
+    expect(r1.chordProgress).toEqual({ hit: 1, total: 2 });
 
     // Play second note 500ms later — within window
     vi.advanceTimersByTime(500);
     const r2 = engine.onMidiInput(64, 80, true);
     expect(r2.advanced).toBe(true);
     expect(r2.result).toBe('HIT');
+    expect(r2.chordProgress).toEqual({ hit: 2, total: 2 });
   });
 
   it('resets partial chord state when window expires', () => {
@@ -67,10 +69,11 @@ describe('V2 WAIT — Chord simultaneity window', () => {
     // Wait 3 seconds — beyond chord window
     vi.advanceTimersByTime(3000);
 
-    // Play second note — should NOT complete chord because window expired
+    // Play second note — window expired, state reset, starts fresh
     const r2 = engine.onMidiInput(64, 80, true);
-    // After timeout, stepState was reset. 64 is a correct note, so it starts fresh partial
     expect(r2.advanced).toBe(false);
+    expect(r2.chordReset).toBe(true);
+    expect(r2.chordProgress).toEqual({ hit: 1, total: 2 });
     // Still need to play 60 again to complete
   });
 
