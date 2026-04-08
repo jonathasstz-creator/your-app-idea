@@ -539,7 +539,7 @@ Regras de handoff:
 - Duplicatas de nota são ignoradas (não contam 2x).
 
 ### Step Quality System (PR1 engine + PR2 UX/HUD)
-- **Escopo:** Engine V2, modo WAIT polifônico apenas. FILM mode **não usa** Step Quality (usa streak legado). V1 implementa stubs (no-op).
+- **Escopo:** Quality badge (PERFECT/GREAT/GOOD/RECOVERED) é V2+WAIT only. **Note feedback** (✓/✗) funciona para V1 e V2 em modo WAIT. FILM mode **não usa** Step Quality (usa streak legado).
 - **Feature flags:**
   - `useStepQualityStreak` (default: `false`) — ativa scoring por qualidade de step no engine.
   - `showStepQualityFeedback` (default: `false`) — ativa feedback visual no HUD (badge, note feedback, chord closure).
