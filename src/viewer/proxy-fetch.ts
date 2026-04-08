@@ -8,19 +8,11 @@
  *   const session = await proxyFetch('/v1/sessions', { method: 'POST', body: JSON.stringify(payload) });
  */
 
-import { getConfig } from '../config/app-config';
+import { getConfig, getProxyAnonKey, getProxyBaseUrl } from '../config/app-config';
 import { getAuthTokenFromStorage } from './auth-storage';
 
 const PROXY_FN = 'api-proxy';
-
-/**
- * Fetch any backend `/v1/*` path through the edge-function proxy.
- * Handles auth token forwarding via x-external-auth header.
- *
- * @param path  — e.g. "/v1/catalog", "/v1/sessions", "/v1/sessions/abc/complete"
- * @param init  — standard RequestInit (method, body, headers)
- * @returns Response-like object with status, ok, json(), text()
- */
+...
 export async function proxyFetch(
   path: string,
   init: RequestInit = {}
@@ -42,29 +34,16 @@ export async function proxyFetch(
     custom['Idempotency-Key'] = initHeaders['Idempotency-Key'] || initHeaders['idempotency-key'];
   }
 
-  // Supabase functions.invoke builds the URL as:
-  //   {SUPABASE_URL}/functions/v1/{functionName}
-  // We need to append the upstream path so the proxy can extract it.
-  // Since supabase-js doesn't support path suffixes in invoke(), we call fetch directly.
-
   const cfg = getConfig();
-  // Edge functions live on the LOVABLE CLOUD project, not the external Supabase.
-  // Use VITE_SUPABASE_URL (Lovable Cloud) for the proxy URL, NOT cfg.supabaseUrl
-  // which may point to the external project from config.json.
-  const lovableCloudUrl = import.meta.env.VITE_SUPABASE_URL || cfg.supabaseUrl;
-
-  const proxyUrl = `${lovableCloudUrl}/functions/v1/${PROXY_FN}${path}`;
+  const proxyBaseUrl = getProxyBaseUrl(cfg);
+  const proxyAnonKey = getProxyAnonKey(cfg);
+  const proxyUrl = `${proxyBaseUrl}/functions/v1/${PROXY_FN}${path}`;
 
   const headers: Record<string, string> = {
     'Accept': 'application/json',
+    'apikey': proxyAnonKey,
     ...custom,
   };
-
-  // Use Lovable Cloud anon key (not the external project's key)
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || cfg.supabaseAnonKey;
-  if (anonKey) {
-    headers['apikey'] = anonKey;
-  }
 
   // Forward content-type
   if (init.body) {

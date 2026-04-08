@@ -1,6 +1,8 @@
 {
   "supabaseUrl": "https://tcpbogzrawoiyjjbxiiw.supabase.co",
   "supabaseAnonKey": "sb_publishable_298Yq3VBz15KzmFDEuQDlg_n4oiVKJk",
+  "proxyBaseUrl": "https://mkhmrcszcjfnmlcfaaln.supabase.co",
+  "proxyAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1raG1yY3N6Y2pmbm1sY2ZhYWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MzI3MDEsImV4cCI6MjA4ODQwODcwMX0.N0wQ7MSV2BPqLXUwOkRUieWvdyub34EYxx0J037ee_Q",
   "apiBaseUrl": "https://api.devoltecomele.com",
   "analyticsApiUrl": "https://api.devoltecomele.com",
   "analyticsMode": "api",
