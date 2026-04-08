@@ -42,6 +42,8 @@ requires_review_from:
 - `src/viewer/analytics-client.ts`
 - `src/viewer/catalog-service.ts`
 - `src/viewer/services/taskCompletion.ts`
+- `src/viewer/ui-service.ts`
+- `src/viewer/audio-service.ts`
 
 ### Invariantes invioláveis
 1. Fire-and-forget nunca bloqueia UI
@@ -94,8 +96,8 @@ requires_review_from:
 ```
 
 ### Schemas
-- **V1:** Monofônico. `LessonNote` com `midi: number`. 1 nota por step.
-- **V2:** Polifônico. `LessonStepV2` com `notes: number[]`. Acordes.
+- **V1:** Monofônico. `LessonNote` com `midi: number`. 1 nota por step. Note feedback (✓/✗) funciona.
+- **V2:** Polifônico. `LessonStepV2` com `notes: number[]`. Acordes. Note feedback + quality badge.
 
 ### Modos
 - **WAIT:** Tempo para até o aluno acertar.

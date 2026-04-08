@@ -23,15 +23,17 @@ Servir como memória viva do projeto. Quando qualquer agente precisa de contexto
 | Domínio | Fonte |
 |---------|-------|
 | Arquitetura geral | `AGENTS.md` + código real |
-| Currículo | `assets/lessons.json` |
+| Currículo | `assets/lessons.json` (metadados) + backend `/v1/catalog` (fonte única) |
 | Engine/scoring | `src/viewer/lesson-engine.ts` |
 | Catálogo | `src/viewer/catalog-service.ts` + `catalog/` |
 | Auth | `src/viewer/auth-storage.ts` + `src/viewer/auth/` |
 | Config | `src/config/app-config.ts` + `public/config.json` |
 | Feature flags | `src/viewer/feature-flags/types.ts` |
 | Tipos | `src/viewer/types.ts`, `catalog/types.ts`, `types/task.ts` |
+| Audio | `src/viewer/audio-service.ts` (síntese piano-like, ADSR, compressor) |
+| Proxy/rede | `src/viewer/proxy-fetch.ts` + `supabase/functions/api-proxy/` |
 | Mudanças recentes | `CHANGELOG.md` |
-| Testes | `src/viewer/__tests__/` |
+| Testes | `src/viewer/__tests__/` (370+ testes, 36 arquivos) |
 
 ## Protocolo de resolução de conflitos
 
