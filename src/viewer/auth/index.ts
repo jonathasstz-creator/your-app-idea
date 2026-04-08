@@ -45,12 +45,16 @@ export async function ensureAuthenticated(): Promise<AuthBootstrapResult> {
 
   // ── No session: show auth overlay and BLOCK until user logs in ──
   return new Promise<AuthBootstrapResult>((resolve) => {
+    // Hide boot splash so auth gate is visible (prevents z-index deadlock)
+    const bootSplash = document.getElementById('boot-splash');
+    if (bootSplash) bootSplash.style.display = 'none';
+
     const overlay = document.createElement('div');
     overlay.id = 'auth-gate';
     Object.assign(overlay.style, {
       position: 'fixed',
       inset: '0',
-      zIndex: '9999',
+      zIndex: '100000',
       background: '#05060f',
     });
     document.body.appendChild(overlay);
