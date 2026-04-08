@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from "vitest";
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import Dashboard from "../piano-pro-dashboard";
 import type { StatsViewModel } from "../analytics-client";
 
@@ -209,14 +209,14 @@ describe("P1 — Suggestion em destaque", () => {
 
 describe("P1 — Chapter recommendation", () => {
   it("renderiza recommendation.label quando presente", () => {
-    // Switch to curriculum tab by clicking
     const { container } = render(<Dashboard stats={baseStats} status="live" />);
     const lessonsTab = Array.from(container.querySelectorAll("button")).find((b) =>
       b.textContent?.includes("LIÇÕES")
     );
-    lessonsTab?.click();
+    act(() => { lessonsTab?.click(); });
 
-    expect(screen.getByText("Pratique mais")).toBeTruthy();
+    expect(container.textContent).toContain("Pratique mais");
+    expect(container.textContent).toContain("Precisão abaixo de 90%");
   });
 
   it("não quebra quando recommendation é null", () => {
@@ -224,9 +224,9 @@ describe("P1 — Chapter recommendation", () => {
     const lessonsTab = Array.from(container.querySelectorAll("button")).find((b) =>
       b.textContent?.includes("LIÇÕES")
     );
-    lessonsTab?.click();
+    act(() => { lessonsTab?.click(); });
 
     // Chapter 2 has null recommendation — should still render without crash
-    expect(screen.getByText("Acordes Básicos")).toBeTruthy();
+    expect(container.textContent).toContain("Acordes Básicos");
   });
 });
