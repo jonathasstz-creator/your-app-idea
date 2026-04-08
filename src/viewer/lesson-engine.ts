@@ -529,6 +529,8 @@ class LessonEngineV2 implements LessonEngineApi {
   private judgedSteps: Set<number> = new Set();
   private analyticsQueue: AnalyticsEvent[] = [];
   private stepState: Set<number> = new Set();
+  private chordFirstHitTime: number | null = null;
+  private readonly CHORD_WINDOW_MS = 2000; // Max time between first and last note in a chord
 
   private activeStep: ActiveStepState | null = null;
 
