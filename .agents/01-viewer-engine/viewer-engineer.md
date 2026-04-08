@@ -51,6 +51,9 @@ Implementar e manter o código em `src/viewer/` que não é engine/pipeline/mapp
 - **Piano roll** depende de `key-layout.ts` como single source of truth para geometria.
 - **Transport layer** está preparado para backend futuro mas não é ativo. Não assumir que REST/WS funciona.
 - **Falling notes** dependem de `beat-to-x-mapping.ts` — mudanças lá são domínio do `lesson-engine-specialist`.
+- **Audio pipeline** centralizado em `handleNoteInput()` de `index.tsx`. `piano-roll-controller` NÃO toca áudio (evita double-trigger).
+- **Feature flag subscriber** compara `prevFlagSnapshot` vs `next` para evitar rebuild desnecessário de sheet/pianoRoll.
+- **Step Quality note feedback** funciona para V1 e V2 (badge é V2-only). Atualizado 2026-04-08.
 
 ## O que este agente NÃO faz
 - ❌ Não modifica lógica de scoring/streak (domínio do engine specialist)

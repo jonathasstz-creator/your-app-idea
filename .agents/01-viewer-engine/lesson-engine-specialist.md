@@ -54,12 +54,13 @@ Manter e evoluir o motor de lição (V1 monofônico e V2 polifônico), scoring, 
 6. **`shouldStartTimer` impede restart pós-ended.** Bug P0 histórico.
 7. **C4/MIDI 60 segue regra de split** (mão direita).
 
-## Step Quality (feature flag `useStepQualityStreak`)
+## Step Quality (feature flags `useStepQualityStreak` + `showStepQualityFeedback`)
 - PERFECT: 0 hard errors, 0 soft errors
 - GREAT: 0 hard errors, ≤1 soft error
 - GOOD: ≤1 hard error
 - RECOVERED: 2+ hard errors
-- Só V2 WAIT mode. FILM usa streak legado.
+- **Quality badge** (PERFECT/GREAT/GOOD/RECOVERED): V2 WAIT only. FILM usa streak legado.
+- **Note feedback** (✓/✗): V1 e V2 em WAIT mode (atualizado 2026-04-08).
 
 ## Scoring V2
 - `engine.getCompletedSteps()` → source of truth para `correctSteps`
