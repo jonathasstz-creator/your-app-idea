@@ -430,7 +430,7 @@ describe('Anti-regression: Feedback flow in V2 WAIT', () => {
     ]));
 
     simulateMidiInput(ctx, 99); // wrong
-    expect(feedbackEl.textContent).toBe('✗ Errado');
+    expect(feedbackEl.textContent).toBe('✗');
     expect(feedbackEl.classList.contains('is-wrong-brief')).toBe(true);
   });
 
@@ -448,7 +448,7 @@ describe('Anti-regression: Feedback flow in V2 WAIT', () => {
     // Chord complete — badge + checkmark
     expect(badgeEl.hidden).toBe(false);
     expect(badgeEl.textContent).toBe('Perfeito');
-    expect(feedbackEl.textContent).toBe('✓ Certo');
+    expect(feedbackEl.textContent).toBe('✓');
   });
 
   it('wrong note then correct → GOOD quality badge', () => {

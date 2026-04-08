@@ -149,7 +149,7 @@ describe('Input Pipeline Unity: source-agnostic Step Quality', () => {
       ]);
 
       simulateNoteInput(ctx, 99, source);
-      expect(feedbackEl.textContent).toBe('✗ Errado');
+      expect(feedbackEl.textContent).toBe('✗');
       expect(feedbackEl.classList.contains('is-wrong-brief')).toBe(true);
     });
 
