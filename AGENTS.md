@@ -359,6 +359,7 @@ featureFlags.init(remoteProvider?)
 | Mapeamento beat→X | `src/viewer/beat-to-x-mapping.ts` |
 | Transposição | `src/viewer/services/lesson-transposer.ts` |
 | Auth storage | `src/viewer/auth-storage.ts` |
+| HUD service | `src/viewer/ui-service.ts` (score/streak sticky, status priority) |
 | Supabase types (auto-gerado) | `src/integrations/supabase/types.ts` (**NÃO editar**) |
 | Supabase client (auto-gerado) | `src/integrations/supabase/client.ts` (**NÃO editar**) |
 
@@ -372,7 +373,7 @@ featureFlags.init(remoteProvider?)
 3. **Respeitar a hierarquia de config:** `window.__APP_CONFIG__` → `/config.json` → `import.meta.env`. Nunca ler `import.meta.env` diretamente fora de `app-config.ts`.
 4. **Preferir mudanças mínimas.** O princípio do projeto é "adaptar o ambiente ao app, não o app ao ambiente."
 5. **Não renomear pastas/arquivos em `src/viewer/`.** A estrutura é preservada para portabilidade entre plataformas.
-6. **Testes obrigatórios** ao mudar `lesson-engine.ts`, `auth-storage.ts`, `analytics-client.ts`, `beat-to-x-mapping.ts`, `lesson-transposer.ts`, `catalog-service.ts`.
+6. **Testes obrigatórios** ao mudar `lesson-engine.ts`, `auth-storage.ts`, `analytics-client.ts`, `beat-to-x-mapping.ts`, `lesson-transposer.ts`, `catalog-service.ts`, `ui-service.ts`.
 7. **Nunca armazenar secrets em código.** Usar `public/config.json` para chaves públicas (anon key).
 8. **Imutabilidade:** `LessonTransposer.transpose()` retorna clone. Engine não muta input. Manter esse padrão.
 9. **Fire-and-forget:** POST `/v1/sessions/{id}/complete` nunca deve bloquear a UI. Falhas são logadas, não lançadas. Guard `completeSent` impede duplicidade.
