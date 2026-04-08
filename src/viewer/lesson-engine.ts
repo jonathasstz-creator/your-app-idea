@@ -636,8 +636,7 @@ class LessonEngineV2 implements LessonEngineApi {
     const isChord = chordNotes.length > 1;
 
     // ── Chord window timeout (WAIT mode only) ──
-    // If partial chord state exists and the window has expired, reset it.
-    // This prevents "playing one note, waiting 10s, then the other" from counting.
+    let chordWasReset = false;
     if (isChord && this.mode === 'WAIT' && this.stepState.size > 0 && this.chordFirstHitTime !== null) {
       const elapsed = Date.now() - this.chordFirstHitTime;
       if (elapsed > this.CHORD_WINDOW_MS) {
@@ -648,16 +647,19 @@ class LessonEngineV2 implements LessonEngineApi {
         });
         this.stepState.clear();
         this.chordFirstHitTime = null;
+        chordWasReset = true;
         if (this.useStepQuality) {
-          this.stepQualityState.softErrorCount += 1; // timeout counts as soft error
+          this.stepQualityState.softErrorCount += 1;
         }
       }
     }
 
+    const chordTotal = chordNotes.length;
+    const mkProgress = () => isChord ? { hit: this.stepState.size, total: chordTotal } : undefined;
+
     // CORRECT_NEW_NOTE
     if (chordNotes.includes(midiInt) && !this.stepState.has(midiInt)) {
       this.stepState.add(midiInt);
-      // Track first hit time for chord window
       if (isChord && this.chordFirstHitTime === null) {
         this.chordFirstHitTime = Date.now();
       }
@@ -666,9 +668,9 @@ class LessonEngineV2 implements LessonEngineApi {
       if (isComplete) {
         this.chordFirstHitTime = null;
         this.onStepComplete('HIT');
-        return { advanced: true, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
+        return { advanced: true, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak, chordProgress: mkProgress(), chordReset: chordWasReset };
       }
-      return { advanced: false, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
+      return { advanced: false, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak, chordProgress: mkProgress(), chordReset: chordWasReset };
     }
 
     // CORRECT_DUPLICATE_NOTE — soft error, no streak impact
@@ -676,7 +678,7 @@ class LessonEngineV2 implements LessonEngineApi {
       if (this.useStepQuality) {
         this.stepQualityState.softErrorCount += 1;
       }
-      return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak };
+      return { advanced: false, result: 'NONE' as ResultStatus, score: this.score, streak: this.streak, chordProgress: mkProgress(), chordReset: chordWasReset };
     }
 
     // EXTRA_WRONG_NOTE — hard error
@@ -684,11 +686,11 @@ class LessonEngineV2 implements LessonEngineApi {
     if (this.useStepQuality) {
       this.stepQualityState.hardErrorCount += 1;
       if (this.stepQualityState.hardErrorCount >= HARD_ERROR_BREAK_THRESHOLD) {
-        this.streak = 0; // break streak mid-step on excessive errors
+        this.streak = 0;
       }
     }
     this.onStepComplete('MISS');
-    return { advanced: false, result: 'MISS' as ResultStatus, score: this.score, streak: this.streak };
+    return { advanced: false, result: 'MISS' as ResultStatus, score: this.score, streak: this.streak, chordProgress: mkProgress(), chordReset: chordWasReset };
   }
 
   tickFilm(
