@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-04-08 — Audio pipeline unificado, síntese piano-like, input convergence (mouse/keyboard/MIDI).
+> **Última atualização:** 2026-04-08 — Step Quality V1 feedback, flag toggle anti-flicker, audio pipeline unificado, input convergence.
 
 ---
 
@@ -21,7 +21,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | Auth & DB | Lovable Cloud (Supabase managed) |
 | MIDI | Web MIDI API (`webmidi-service.ts`) |
 | Sheet Music | OSMD (OpenSheetMusicDisplay) |
-| Testes | Vitest + jsdom (360+ testes, 34 arquivos) |
+| Testes | Vitest + jsdom (370+ testes, 36 arquivos) |
 
 > **Nota:** Este projeto consome um backend FastAPI externo em `api.devoltecomele.com` via Edge Function proxy (`api-proxy`). O catálogo, sessões e analytics vêm do backend (fonte única de verdade). O proxy resolve CORS em preview e produção. `assets/lessons.json` é usado apenas para indexação estática de metadados de trail chapters.
 
@@ -539,7 +539,7 @@ Regras de handoff:
 - Duplicatas de nota são ignoradas (não contam 2x).
 
 ### Step Quality System (PR1 engine + PR2 UX/HUD)
-- **Escopo:** Engine V2, modo WAIT polifônico apenas. FILM mode **não usa** Step Quality (usa streak legado). V1 implementa stubs (no-op).
+- **Escopo:** Quality badge (PERFECT/GREAT/GOOD/RECOVERED) é V2+WAIT only. **Note feedback** (✓/✗) funciona para V1 e V2 em modo WAIT. FILM mode **não usa** Step Quality (usa streak legado).
 - **Feature flags:**
   - `useStepQualityStreak` (default: `false`) — ativa scoring por qualidade de step no engine.
   - `showStepQualityFeedback` (default: `false`) — ativa feedback visual no HUD (badge, note feedback, chord closure).
@@ -658,6 +658,8 @@ Regras de handoff:
 - ✅ **HUD UX fixes** (2026-04-08): score/streak sticky visibility, status terminal priority, Step Quality flag toggles no menu
 - ✅ **Audio pipeline unificado** (2026-04-08): síntese piano-like (layered oscillators + compressor), áudio centralizado em `handleNoteInput`, auto-play falling notes gated, 27 testes anti-regressão
 - ✅ **Input convergence** (2026-04-08): mouse, keyboard e MIDI alimentam o mesmo `handleNoteInput` → mesma pipeline de engine + áudio + Step Quality
+- ✅ **Step Quality V1 feedback** (2026-04-08): note feedback (✓/✗) agora funciona para lições V1 quando `showStepQualityFeedback` ativo. Quality badge permanece V2-only.
+- ✅ **Flag toggle anti-flicker** (2026-04-08): subscriber de feature flags só reconstrói sheet/pianoRoll quando `showSheetMusic`/`showFallingNotes` realmente mudam. 10 testes anti-regressão.
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.

@@ -1,5 +1,28 @@
 # Changelog
 
+## [2026-04-08] - Step Quality: Feedback V1 + Flag toggle anti-flicker
+
+### Resumo
+Dois bugs corrigidos: (1) Step Quality note feedback agora funciona para lições V1 (monofônicas), não apenas V2. (2) Alternar qualquer feature flag no painel de debug não causa mais flicker/rebuild da partitura.
+
+### O que mudou
+
+#### `src/viewer/index.tsx` — Feature flag subscriber (anti-flicker)
+- **Antes:** O subscriber de `featureFlags.subscribe()` chamava `rebuildSheetMappings()` toda vez que QUALQUER flag mudava.
+- **Depois:** Compara `prevFlagSnapshot` vs `next`, só reconstrói quando `showSheetMusic`/`showFallingNotes` mudam.
+
+#### `src/viewer/index.tsx` — Step Quality feedback V1
+- **Antes:** Feedback visual exigia `currentSchemaVersion === 2`. V1 nunca mostrava feedback.
+- **Depois:** Note feedback (✓/✗) funciona para V1. Quality badge permanece V2-only.
+
+### Testes adicionados (10 novos, 2 arquivos)
+| Arquivo | Cobertura |
+|---------|-----------|
+| `flag-toggle-sheet-flicker-regression.test.ts` | Flag toggle unrelated não causa rebuild |
+| `step-quality-v1-feedback-regression.test.ts` | V1 recebe note feedback, badge é V2-only |
+
+---
+
 ## [2026-04-08] - Audio: Síntese piano-like + Pipeline de input unificado
 
 ### Resumo
