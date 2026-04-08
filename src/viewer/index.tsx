@@ -2241,7 +2241,9 @@ const init = async () => {
         if (flagStepQualityStreakToggle) flagStepQualityStreakToggle.checked = featureFlagSnapshot.useStepQualityStreak;
         if (flagStepQualityFeedbackToggle) flagStepQualityFeedbackToggle.checked = featureFlagSnapshot.showStepQualityFeedback;
         if (flagResizableSheetToggle) flagResizableSheetToggle.checked = featureFlagSnapshot.resizableSheet;
+        if (flagShowStreakToggle) flagShowStreakToggle.checked = featureFlagSnapshot.showStreakCounter;
         applyHideHud(featureFlagSnapshot.hideHud);
+        ui.setShowStreak(featureFlagSnapshot.showStreakCounter);
     };
 
     const applyHideHud = (hide: boolean) => {
