@@ -555,8 +555,13 @@ const init = async () => {
             featureFlags.set("resizableSheet", !!flagResizableSheetToggle.checked, "runtime");
         });
     }
+    if (flagShowStreakToggle) {
+        flagShowStreakToggle.checked = featureFlagSnapshot.showStreakCounter;
+        flagShowStreakToggle.addEventListener("change", () => {
+            featureFlags.set("showStreakCounter", !!flagShowStreakToggle.checked, "runtime");
+        });
+    }
 
-    // --- Sheet Resize Handle Logic (gated by resizableSheet flag) ---
     {
         let isResizing = false;
         let startY = 0;
