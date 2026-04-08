@@ -2291,6 +2291,7 @@ const init = async () => {
             }
         }
         applyHideHud(next.hideHud);
+        ui.setShowStreak(next.showStreakCounter);
         prevFlagSnapshot = next;
         console.log("[FeatureFlags] update", { source: meta.source, name: meta.name, next });
     });
