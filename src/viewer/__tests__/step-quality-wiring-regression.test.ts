@@ -40,29 +40,39 @@ interface WiringContext {
 function simulateMidiInput(ctx: WiringContext, midi: number) {
   const { engine, badge, feedback, chordFx, flagSnapshot, schemaVersion, mode } = ctx;
 
+  const viewBefore = engine.getViewState();
   const result = engine.onMidiInput(midi, 100, true);
+  const viewAfter = engine.getViewState();
 
-  // Guard: Step Quality feedback block (mirrors index.tsx)
-  if (
-    schemaVersion === 2 &&
-    mode === 'WAIT' &&
-    flagSnapshot.showStepQualityFeedback &&
-    flagSnapshot.useStepQualityStreak
-  ) {
-    const view = engine.getViewState();
+  // Guard: Step Quality feedback block (mirrors index.tsx post-fix)
+  if (mode === 'WAIT' && flagSnapshot.showStepQualityFeedback) {
+    const stepAdvanced = viewAfter.currentStep > viewBefore.currentStep;
 
-    if (result.result === 'MISS') {
-      feedback.showWrongNote();
-    }
-
-    if (result.advanced) {
-      const qualities = engine.getStepQualities();
-      const lastQuality = qualities[qualities.length - 1];
-      if (lastQuality) {
-        badge.show(lastQuality);
+    if (schemaVersion === 2) {
+      // V2: Full step quality with chords, quality badge, partial hits
+      if (result.result === 'MISS') {
+        feedback.showWrongNote();
       }
-      chordFx.trigger();
-      feedback.showChordComplete();
+
+      if (stepAdvanced) {
+        // Quality badge (only when step quality tracking is active)
+        if (flagSnapshot.useStepQualityStreak) {
+          const qualities = engine.getStepQualities();
+          const lastQuality = qualities[qualities.length - 1];
+          if (lastQuality) {
+            badge.show(lastQuality);
+          }
+        }
+        chordFx.trigger();
+        feedback.showChordComplete();
+      }
+    } else {
+      // V1: Basic note feedback (HIT → ✓, MISS → ✗)
+      if (stepAdvanced || result.result === 'HIT') {
+        feedback.showChordComplete();
+      } else if (result.result === 'MISS') {
+        feedback.showWrongNote();
+      }
     }
   }
 
