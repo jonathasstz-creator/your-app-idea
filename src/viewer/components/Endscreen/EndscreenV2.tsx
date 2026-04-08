@@ -1,14 +1,16 @@
 /**
- * ENDSCREEN V2 - POLIFÔNICO COMPLETO
+ * ENDSCREEN V2 - POLIFÔNICO v2.1
  * Arquivo: viewer/components/Endscreen/EndscreenV2.tsx
- * 
- * 🏆 Overlay avançado ao final da tarefa
- * - Tabs expandíveis: Resumo, Acordes, Notas
- * - Score: base + time bonus
- * - Threshold 3 estrelas visível
- * - Stats por acorde e por nota
- * - Botões: Voltar, Repetir, Próximo
- * 
+ *
+ * v2.1: UX clarity rewrite
+ * - Score explained (X passos × 100 pts)
+ * - "Steps Corretos" → "Passos completados"
+ * - "Acurácia (Steps)" → "Aproveitamento"
+ * - "Acurácia (Notas)" → "Precisão por nota"
+ * - perNote stats: show only errors, label as "tentativas"
+ * - Threshold 3 stars: humanized
+ * - Timing: seconds not ms
+ *
  * 🔒 ZERO QUEBRAS: overlay isolado, sem alterar áudio/timing
  */
 
@@ -80,7 +82,6 @@ export const EndscreenV2: React.FC<EndscreenV2Props> = ({
   const percentage = Math.round((result.correctSteps / result.totalSteps) * 100);
   const isHighScore = result.highScore > 0 && result.totalScore >= result.highScore;
 
-  // Sort functions
   const sortStats = <T extends { pct: number }>(items: T[], order: SortType): T[] => {
     if (order === "best") return [...items].sort((a, b) => b.pct - a.pct);
     if (order === "worst") return [...items].sort((a, b) => a.pct - b.pct);
@@ -89,6 +90,11 @@ export const EndscreenV2: React.FC<EndscreenV2Props> = ({
 
   const sortedChords = sortStats(result.perChord, sortOrder);
   const sortedNotes = sortStats(result.perNote || [], sortOrder);
+
+  const formatMs = (ms: number) => {
+    if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
+    return `${ms}ms`;
+  };
 
   return (
     <div className="endscreen-overlay-v2">
@@ -113,55 +119,65 @@ export const EndscreenV2: React.FC<EndscreenV2Props> = ({
         {/* Summary */}
         <div className="endscreen-summary-v2">
           <div className="summary-row">
-            <span className="label">Steps Corretos</span>
+            <span className="label">Passos completados</span>
             <span className="value">
-              {result.correctSteps} / {result.totalSteps}
+              {result.correctSteps} de {result.totalSteps}
             </span>
           </div>
           <div className="summary-row">
-            <span className="label">Acurácia (Steps)</span>
+            <span className="label">Aproveitamento</span>
             <span className="value percentage">{percentage}%</span>
           </div>
           {result.noteAccuracy !== undefined && (
             <div className="summary-row">
-              <span className="label">Acurácia (Notas)</span>
-              <span className="value percentage">{Math.round(result.noteAccuracy * 100)}%</span>
+              <span className="label">Precisão por nota</span>
+              <span className="value percentage">
+                {Math.round(result.noteAccuracy * 100)}%
+                {result.correctNotes !== undefined && result.totalExpectedNotes !== undefined && (
+                  <span className="value-detail"> ({result.correctNotes}/{result.totalExpectedNotes})</span>
+                )}
+              </span>
             </div>
           )}
         </div>
 
-        {/* Threshold 3 Stars */}
+        {/* Threshold 3 Stars — humanized */}
         <div className="endscreen-threshold-v2">
-          <span className="threshold-label">⭐ 3 Estrelas requer</span>
+          <span className="threshold-label">Para 3 estrelas ⭐</span>
           <span className="threshold-value">
-            {result.stars3RequiredCorrect}/{result.totalSteps} acertos
+            acerte {result.stars3RequiredCorrect} de {result.totalSteps} passos
           </span>
         </div>
 
-        {/* Score Box */}
+        {/* Score Box — with explanation */}
         <div className="endscreen-scorebox-v2">
           <div className="score-line">
-            <span className="score-label">Pontuação Base</span>
+            <span className="score-label">Pontuação</span>
             <span className="score-value">{result.scoreBase}</span>
+          </div>
+          <div className="score-explain">
+            {result.correctSteps} passo{result.correctSteps !== 1 ? "s" : ""} × 100 pts
           </div>
           {result.timeBonus > 0 && (
             <div className="score-line">
-              <span className="score-label">Bônus de Tempo</span>
+              <span className="score-label">Bônus de tempo</span>
               <span className="score-bonus">+{result.timeBonus}</span>
             </div>
           )}
-          <div className="score-line total">
-            <span className="score-label">Total</span>
-            <span className="score-value-total">{result.totalScore}</span>
-          </div>
+          {result.timeBonus > 0 && (
+            <div className="score-line total">
+              <span className="score-label">Total</span>
+              <span className="score-value-total">{result.totalScore}</span>
+            </div>
+          )}
           {isHighScore && (
             <div className="score-line highscore">
-              <span className="score-hs">🏆 Novo Recorde!</span>
+              <span className="score-hs">🏆 Novo recorde!</span>
             </div>
           )}
           {!isHighScore && result.highScore > 0 && (
             <div className="score-line highscore">
-              <span className="score-hs">Recorde: {result.highScore}</span>
+              <span className="score-hs">Seu recorde: {result.highScore} pts</span>
             </div>
           )}
         </div>
@@ -169,7 +185,7 @@ export const EndscreenV2: React.FC<EndscreenV2Props> = ({
         {/* Expandable Details */}
         <div className="endscreen-expandable-v2" onClick={handleExpand}>
           <span className="hint-text">
-            {expanded ? "📁 Clique para recolher detalhes" : "📂 Clique para ver detalhes"}
+            {expanded ? "Recolher detalhes" : "Ver detalhes da sessão"}
           </span>
           <span className="expand-indicator">{expanded ? "▲" : "▼"}</span>
         </div>
@@ -183,7 +199,7 @@ export const EndscreenV2: React.FC<EndscreenV2Props> = ({
                 className={`tab ${activeTab === "summary" ? "active" : ""}`}
                 onClick={() => setActiveTab("summary")}
               >
-                Resumo
+                Tempos
               </button>
               <button
                 className={`tab ${activeTab === "chords" ? "active" : ""}`}
@@ -211,7 +227,7 @@ export const EndscreenV2: React.FC<EndscreenV2Props> = ({
                 className={sortOrder === "worst" ? "active" : ""}
                 onClick={() => setSortOrder("worst")}
               >
-                Piores
+                Para melhorar
               </button>
               <button
                 className={sortOrder === "all" ? "active" : ""}
@@ -226,34 +242,28 @@ export const EndscreenV2: React.FC<EndscreenV2Props> = ({
               {activeTab === "summary" && (
                 <div className="summary-content">
                   <div className="detail-row">
-                    <span>Tempo Médio de Resposta</span>
-                    <span className="mono">{result.responseMsAvg}ms</span>
+                    <span>Tempo médio por passo</span>
+                    <span className="mono">{formatMs(result.responseMsAvg)}</span>
                   </div>
                   <div className="detail-row">
-                    <span>Tempo Mais Rápido</span>
-                    <span className="mono">{result.responseMsMin}ms</span>
+                    <span>Mais rápido</span>
+                    <span className="mono">{formatMs(result.responseMsMin)}</span>
                   </div>
                   <div className="detail-row">
-                    <span>Tempo Mais Lento</span>
-                    <span className="mono">{result.responseMsMax}ms</span>
+                    <span>Mais lento</span>
+                    <span className="mono">{formatMs(result.responseMsMax)}</span>
                   </div>
                   <div className="detail-row">
                     <span>Modo</span>
-                    <span>{result.mode}</span>
+                    <span>{result.mode === "WAIT" ? "Passo a passo" : "Tempo real"}</span>
                   </div>
-                  {result.lessonId && (
-                    <div className="detail-row">
-                      <span>Lição</span>
-                      <span>{result.lessonId}</span>
-                    </div>
-                  )}
                 </div>
               )}
 
               {activeTab === "chords" && (
                 <div className="chords-content">
                   {sortedChords.length === 0 ? (
-                    <div className="empty-state">Nenhum acorde registrado</div>
+                    <div className="empty-state">Nenhum acorde nesta lição</div>
                   ) : (
                     sortedChords.map((chord, idx) => (
                       <ChordStatRow key={idx} chord={chord} />
@@ -309,7 +319,7 @@ const ChordStatRow: React.FC<{ chord: PerChordStatV2 }> = ({ chord }) => {
       <div className="stat-chord">
         <span className="chord-name">{chord.label || chord.chordName}</span>
         <span className="chord-count">
-          {chord.correct}/{chord.total}
+          {chord.correct}/{chord.total} tentativas
         </span>
       </div>
       <div className="stat-bar">
@@ -357,7 +367,7 @@ const NoteStatRow: React.FC<{ note: PerNoteStatV1 }> = ({ note }) => (
     <div className="stat-note">
       <span className="note-name">{note.label || note.noteName}</span>
       <span className="note-count">
-        {note.correct}/{note.total}
+        {note.correct}/{note.total} tentativas
       </span>
     </div>
     <div className="stat-bar">
