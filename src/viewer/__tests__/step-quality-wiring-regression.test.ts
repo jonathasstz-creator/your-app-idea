@@ -40,29 +40,39 @@ interface WiringContext {
 function simulateMidiInput(ctx: WiringContext, midi: number) {
   const { engine, badge, feedback, chordFx, flagSnapshot, schemaVersion, mode } = ctx;
 
+  const viewBefore = engine.getViewState();
   const result = engine.onMidiInput(midi, 100, true);
+  const viewAfter = engine.getViewState();
 
-  // Guard: Step Quality feedback block (mirrors index.tsx)
-  if (
-    schemaVersion === 2 &&
-    mode === 'WAIT' &&
-    flagSnapshot.showStepQualityFeedback &&
-    flagSnapshot.useStepQualityStreak
-  ) {
-    const view = engine.getViewState();
+  // Guard: Step Quality feedback block (mirrors index.tsx post-fix)
+  if (mode === 'WAIT' && flagSnapshot.showStepQualityFeedback) {
+    const stepAdvanced = viewAfter.currentStep > viewBefore.currentStep;
 
-    if (result.result === 'MISS') {
-      feedback.showWrongNote();
-    }
-
-    if (result.advanced) {
-      const qualities = engine.getStepQualities();
-      const lastQuality = qualities[qualities.length - 1];
-      if (lastQuality) {
-        badge.show(lastQuality);
+    if (schemaVersion === 2) {
+      // V2: Full step quality with chords, quality badge, partial hits
+      if (result.result === 'MISS') {
+        feedback.showWrongNote();
       }
-      chordFx.trigger();
-      feedback.showChordComplete();
+
+      if (stepAdvanced) {
+        // Quality badge (only when step quality tracking is active)
+        if (flagSnapshot.useStepQualityStreak) {
+          const qualities = engine.getStepQualities();
+          const lastQuality = qualities[qualities.length - 1];
+          if (lastQuality) {
+            badge.show(lastQuality);
+          }
+        }
+        chordFx.trigger();
+        feedback.showChordComplete();
+      }
+    } else {
+      // V1: Basic note feedback (HIT → ✓, MISS → ✗)
+      if (stepAdvanced || result.result === 'HIT') {
+        feedback.showChordComplete();
+      } else if (result.result === 'MISS') {
+        feedback.showWrongNote();
+      }
     }
   }
 
@@ -201,7 +211,7 @@ describe('Anti-regression: Guard matrix', () => {
     expect(badgeEl.textContent).toBe('Perfeito');
   });
 
-  it('V1 + both flags ON → no feedback (guard blocks)', () => {
+  it('V1 + both flags ON → no quality badge but note feedback works', () => {
     const v1Engine = createEngineV1();
     const ctx = makeCtx({
       engine: v1Engine,
@@ -215,7 +225,9 @@ describe('Anti-regression: Guard matrix', () => {
     v1Engine.loadLesson(makeV1Lesson());
     simulateMidiInput(ctx, 60);
 
-    expect(badgeEl.hidden).toBe(true); // no badge
+    expect(badgeEl.hidden).toBe(true); // no quality badge for V1
+    // But note feedback (✓) should fire for V1
+    expect(feedbackEl.className).toContain('is-chord-complete');
   });
 
   it('V2 + FILM + both flags ON → no feedback (guard blocks)', () => {
@@ -233,7 +245,7 @@ describe('Anti-regression: Guard matrix', () => {
     expect(badgeEl.hidden).toBe(true);
   });
 
-  it('V2 + WAIT + showStepQualityFeedback ON + useStepQualityStreak OFF → no feedback', () => {
+  it('V2 + WAIT + showStepQualityFeedback ON + useStepQualityStreak OFF → note feedback but no badge', () => {
     const ctx = makeCtx({
       flagSnapshot: {
         ...DEFAULT_FLAGS,
@@ -244,7 +256,8 @@ describe('Anti-regression: Guard matrix', () => {
     ctx.engine.loadLesson(makeV2Lesson([{ notes: [60], start_beat: 0 }]));
     simulateMidiInput(ctx, 60);
 
-    expect(badgeEl.hidden).toBe(true);
+    expect(badgeEl.hidden).toBe(true); // no quality badge without useStepQualityStreak
+    expect(feedbackEl.className).toContain('is-chord-complete'); // but note feedback works
   });
 
   it('V2 + WAIT + showStepQualityFeedback OFF + useStepQualityStreak ON → no feedback', () => {
