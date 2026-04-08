@@ -245,7 +245,7 @@ describe('Anti-regression: Guard matrix', () => {
     expect(badgeEl.hidden).toBe(true);
   });
 
-  it('V2 + WAIT + showStepQualityFeedback ON + useStepQualityStreak OFF → no feedback', () => {
+  it('V2 + WAIT + showStepQualityFeedback ON + useStepQualityStreak OFF → note feedback but no badge', () => {
     const ctx = makeCtx({
       flagSnapshot: {
         ...DEFAULT_FLAGS,
@@ -256,7 +256,8 @@ describe('Anti-regression: Guard matrix', () => {
     ctx.engine.loadLesson(makeV2Lesson([{ notes: [60], start_beat: 0 }]));
     simulateMidiInput(ctx, 60);
 
-    expect(badgeEl.hidden).toBe(true);
+    expect(badgeEl.hidden).toBe(true); // no quality badge without useStepQualityStreak
+    expect(feedbackEl.className).toContain('is-chord-complete'); // but note feedback works
   });
 
   it('V2 + WAIT + showStepQualityFeedback OFF + useStepQualityStreak ON → no feedback', () => {
