@@ -38,6 +38,15 @@ body.dark-theme {
   flex-direction: column;
 }
 
+/* Boot shell: hide all internal UI until auth + init complete */
+body.app-booting #app {
+  visibility: hidden;
+  pointer-events: none;
+}
+body.app-booting {
+  background: var(--bg-dark);
+}
+
 .auth-overlay {
   position: fixed;
   inset: 0;
