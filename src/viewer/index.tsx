@@ -3031,6 +3031,8 @@ const startApp = async () => {
 
     // Remove boot shell — app is ready
     document.body.classList.remove('app-booting');
+    document.body.dataset.appState = 'ready';
+    document.body.setAttribute('aria-busy', 'false');
 };
 
 // Check if DOM is already loaded (because script is deferred)
