@@ -407,7 +407,7 @@ featureFlags.init(remoteProvider?)
 
 | Situação | Tipo de teste mínimo |
 |----------|---------------------|
-| Mudança em módulo crítico (`lesson-engine`, `auth-storage`, `analytics-client`, `beat-to-x-mapping`, `lesson-transposer`, `catalog-service`, `taskCompletion`) | Unit test |
+| Mudança em módulo crítico (`lesson-engine`, `auth-storage`, `analytics-client`, `beat-to-x-mapping`, `lesson-transposer`, `catalog-service`, `taskCompletion`, `ui-service`) | Unit test |
 | Bug fix em qualquer módulo | Anti-regression test (deve falhar sem o fix) |
 | Mudança em feature flags | Teste de combinação de flags (ON/OFF matrix) |
 | Mudança em guards de `index.tsx` | Teste de wiring simulando o contrato do handler |
