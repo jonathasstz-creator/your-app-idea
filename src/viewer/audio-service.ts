@@ -85,17 +85,18 @@ export class AudioService {
       const noteGain = ctx.createGain();
       noteGain.connect(this.masterGain);
 
-      // ADSR timings
+      // ADSR timings — adapt to duration to avoid overlap artifacts
       const attack = 0.008;
-      const decay = 0.15;
-      const sustainLevel = peakGain * 0.6;
-      const releaseStart = Math.max(now + attack + decay, now + duration - 0.08);
-      const releaseEnd = releaseStart + 0.08;
+      const decay = Math.min(0.15, duration * 0.4);
+      const sustainLevel = Math.max(peakGain * 0.6, 0.001);
+      const releaseTime = Math.min(0.08, duration * 0.2);
+      const sustainEnd = Math.max(now + attack + decay, now + duration - releaseTime);
+      const releaseEnd = sustainEnd + releaseTime;
 
       noteGain.gain.setValueAtTime(0, now);
       noteGain.gain.linearRampToValueAtTime(peakGain, now + attack);
-      noteGain.gain.exponentialRampToValueAtTime(Math.max(sustainLevel, 0.001), now + attack + decay);
-      noteGain.gain.setValueAtTime(sustainLevel, releaseStart);
+      noteGain.gain.exponentialRampToValueAtTime(sustainLevel, now + attack + decay);
+      noteGain.gain.setValueAtTime(sustainLevel, sustainEnd);
       noteGain.gain.exponentialRampToValueAtTime(0.001, releaseEnd);
 
       // --- Layered oscillators for richness ---
