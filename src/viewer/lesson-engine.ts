@@ -621,13 +621,38 @@ class LessonEngineV2 implements LessonEngineApi {
     const midiInt = Math.round(midi);
     const chordNotes = Array.isArray(targetStep.notes) ? targetStep.notes : [];
     const expectedMidi = chordNotes.length > 0 ? chordNotes[0] : midiInt;
+    const isChord = chordNotes.length > 1;
+
+    // ── Chord window timeout (WAIT mode only) ──
+    // If partial chord state exists and the window has expired, reset it.
+    // This prevents "playing one note, waiting 10s, then the other" from counting.
+    if (isChord && this.mode === 'WAIT' && this.stepState.size > 0 && this.chordFirstHitTime !== null) {
+      const elapsed = Date.now() - this.chordFirstHitTime;
+      if (elapsed > this.CHORD_WINDOW_MS) {
+        console.info('[Engine:V2] Chord window expired', {
+          step: this.currentStep,
+          elapsed,
+          hitSoFar: Array.from(this.stepState),
+        });
+        this.stepState.clear();
+        this.chordFirstHitTime = null;
+        if (this.useStepQuality) {
+          this.stepQualityState.softErrorCount += 1; // timeout counts as soft error
+        }
+      }
+    }
 
     // CORRECT_NEW_NOTE
     if (chordNotes.includes(midiInt) && !this.stepState.has(midiInt)) {
       this.stepState.add(midiInt);
+      // Track first hit time for chord window
+      if (isChord && this.chordFirstHitTime === null) {
+        this.chordFirstHitTime = Date.now();
+      }
       const isComplete = chordNotes.every((m) => this.stepState.has(m));
       this.logAttempt(midiInt, midiInt, true);
       if (isComplete) {
+        this.chordFirstHitTime = null;
         this.onStepComplete('HIT');
         return { advanced: true, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak };
       }
