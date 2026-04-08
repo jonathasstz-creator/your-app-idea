@@ -666,9 +666,10 @@ class LessonEngineV2 implements LessonEngineApi {
       const isComplete = chordNotes.every((m) => this.stepState.has(m));
       this.logAttempt(midiInt, midiInt, true);
       if (isComplete) {
+        const finalProgress = isChord ? { hit: chordTotal, total: chordTotal } : undefined;
         this.chordFirstHitTime = null;
         this.onStepComplete('HIT');
-        return { advanced: true, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak, chordProgress: mkProgress(), chordReset: chordWasReset };
+        return { advanced: true, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak, chordProgress: finalProgress, chordReset: chordWasReset };
       }
       return { advanced: false, result: 'HIT' as ResultStatus, score: this.score, streak: this.streak, chordProgress: mkProgress(), chordReset: chordWasReset };
     }
