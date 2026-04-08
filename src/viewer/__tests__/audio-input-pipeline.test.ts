@@ -220,6 +220,52 @@ describe('Input pipeline convergence', () => {
       [64, 96, 'keyboard'],
     ]);
   });
+
+  it('anti-regression: physical KeyD re-arms even if keyup key value changes', () => {
+    const KEY_TO_MIDI: Record<string, number> = { d: 64 };
+    const KEYBOARD_CODE_TO_KEY: Record<string, string> = { KeyD: 'd' };
+    const pressedKeyboardKeys = new Map<string, number>();
+    const handler = vi.fn();
+
+    const getKeyboardDebugMidi = (event: { key: string; code: string }) => {
+      const keyFromCode = KEYBOARD_CODE_TO_KEY[event.code];
+      const key = (keyFromCode ?? event.key.toLowerCase()) || '';
+      const midi = KEY_TO_MIDI[key];
+      return typeof midi === 'number' ? midi : null;
+    };
+
+    const getKeyboardDebugKeyId = (event: { key: string; code: string }, midi: number | null) => {
+      if (midi === null) return null;
+      return event.code || `midi:${midi}`;
+    };
+
+    const handleKeyDown = (event: { key: string; code: string }) => {
+      const midi = getKeyboardDebugMidi(event);
+      const keyId = getKeyboardDebugKeyId(event, midi);
+      if (midi === null || !keyId || pressedKeyboardKeys.has(keyId)) return;
+      pressedKeyboardKeys.set(keyId, midi);
+      handler(midi, 96, 'keyboard');
+    };
+
+    const handleKeyUp = (event: { key: string; code: string }) => {
+      const midi = getKeyboardDebugMidi(event);
+      const keyId = getKeyboardDebugKeyId(event, midi);
+      if (!keyId || !pressedKeyboardKeys.has(keyId)) return;
+      const activeMidi = pressedKeyboardKeys.get(keyId);
+      pressedKeyboardKeys.delete(keyId);
+      if (typeof activeMidi === 'number') handler(activeMidi, 0, 'keyboard');
+    };
+
+    handleKeyDown({ key: 'd', code: 'KeyD' });
+    handleKeyUp({ key: 'Dead', code: 'KeyD' });
+    handleKeyDown({ key: 'd', code: 'KeyD' });
+
+    expect(handler.mock.calls).toEqual([
+      [64, 96, 'keyboard'],
+      [64, 0, 'keyboard'],
+      [64, 96, 'keyboard'],
+    ]);
+  });
 });
 
 describe('Audio gating in virtual keyboard', () => {

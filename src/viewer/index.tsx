@@ -833,14 +833,42 @@ const init = async () => {
     let debugKeyboardEnabled = false;
     let debugLastSource: DebugInputSource = "midi";
     let debugLastNote: string | null = null;
-    const pressedKeyboardKeys = new Set<string>();
+    const KEYBOARD_CODE_TO_KEY: Record<string, string> = {
+        KeyA: "a",
+        KeyW: "w",
+        KeyS: "s",
+        KeyE: "e",
+        KeyD: "d",
+        KeyF: "f",
+        KeyT: "t",
+        KeyG: "g",
+        KeyY: "y",
+        KeyH: "h",
+        KeyU: "u",
+        KeyJ: "j",
+        KeyK: "k",
+    };
+    const pressedKeyboardKeys = new Map<string, number>();
     let keyboardListenersAttached = false;
+
+    const getKeyboardDebugMidi = (event: KeyboardEvent): number | null => {
+        const keyFromCode = KEYBOARD_CODE_TO_KEY[event.code];
+        const key = (keyFromCode ?? event.key?.toLowerCase?.()) || "";
+        const midi = KEY_TO_MIDI[key];
+        if (typeof midi !== "number") return null;
+        if (midi < DEBUG_NOTE_RANGE.min || midi > DEBUG_NOTE_RANGE.max) return null;
+        return midi;
+    };
+
+    const getKeyboardDebugKeyId = (event: KeyboardEvent, midi: number | null) => {
+        if (midi === null) return null;
+        return event.code || `midi:${midi}`;
+    };
 
     const releasePressedKeyboardKeys = () => {
         if (!pressedKeyboardKeys.size) return;
-        pressedKeyboardKeys.forEach((key) => {
-            const midi = KEY_TO_MIDI[key];
-            if (midi) handleNoteInput(midi, 0, "keyboard");
+        pressedKeyboardKeys.forEach((midi) => {
+            handleNoteInput(midi, 0, "keyboard");
         });
         pressedKeyboardKeys.clear();
     };
@@ -2058,12 +2086,12 @@ const init = async () => {
 
         if (isTextInputTarget(event.target)) return;
 
-        const key = event.key.toLowerCase();
-        const midi = KEY_TO_MIDI[key];
-        if (!midi || midi < DEBUG_NOTE_RANGE.min || midi > DEBUG_NOTE_RANGE.max) return;
+        const midi = getKeyboardDebugMidi(event);
+        const keyId = getKeyboardDebugKeyId(event, midi);
+        if (midi === null || !keyId) return;
 
-        if (pressedKeyboardKeys.has(key)) return;
-        pressedKeyboardKeys.add(key);
+        if (pressedKeyboardKeys.has(keyId)) return;
+        pressedKeyboardKeys.set(keyId, midi);
 
         console.debug("[KBD]", { code: event.code, key: event.key, pitch: midi, name: midiToName(midi) });
         handleNoteInput(midi, 96, "keyboard");
@@ -2073,12 +2101,13 @@ const init = async () => {
     const handleDebugKeyUp = (event: KeyboardEvent) => {
         if (!debugKeyboardEnabled || !isTrainerActive()) return;
 
-        const key = event.key.toLowerCase();
-        if (!pressedKeyboardKeys.has(key)) return;
+        const midi = getKeyboardDebugMidi(event);
+        const keyId = getKeyboardDebugKeyId(event, midi);
+        if (!keyId || !pressedKeyboardKeys.has(keyId)) return;
 
-        pressedKeyboardKeys.delete(key);
-        const midi = KEY_TO_MIDI[key];
-        if (midi) handleNoteInput(midi, 0, "keyboard");
+        const activeMidi = pressedKeyboardKeys.get(keyId);
+        pressedKeyboardKeys.delete(keyId);
+        if (typeof activeMidi === "number") handleNoteInput(activeMidi, 0, "keyboard");
     };
 
     const handleKeyboardBlur = () => {
