@@ -9,12 +9,10 @@
  * a subsequent note exceeds this window, partial state auto-resets.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createEngineV2, type LessonEngineApi } from '../lesson-engine';
 
-// We test via the public LessonEngineApi interface
-function createV2Engine() {
-  // Dynamic import to avoid stale module caching
-  const { createEngineV2 } = require('../lesson-engine');
-  return createEngineV2() as import('../lesson-engine').LessonEngineApi;
+function createV2Engine(): LessonEngineApi {
+  return createEngineV2();
 }
 
 function makeChordLesson(chords: number[][]) {
