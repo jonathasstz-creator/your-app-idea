@@ -542,7 +542,16 @@ Regras de handoff:
 - **Armadilha histórica (corrigida 2026-03-12):** controllers eram criados condicionalmente no boot e `featureFlagSnapshot` era congelado no init. Mudanças de flag em runtime não tinham efeito. Fix: criação incondicional + `featureFlags.subscribe()` para manter snapshot vivo.
 - **Arquivos:** `src/viewer/types/step-quality.ts`, `src/viewer/step-quality-ui.ts`, `src/viewer/lesson-engine.ts`, wiring em `src/viewer/index.tsx`.
 
-### Beat-to-X mapping
+### HUD UX — Score/Streak/Status (corrigido 2026-04-08)
+- **Score e Streak usam visibilidade "sticky":** uma vez que `updateHud` recebe `scoreTotal` ou `streak`, o elemento fica visível permanentemente (mesmo se chamadas subsequentes omitirem esses campos, como no `FINISHED`).
+- **Status tem prioridade terminal:** `FINISHED`/`DONE` não podem ser sobrescritos por estados transitórios (`HIT`, `WAITING`, etc.). Apenas `RESET` desbloqueia o status terminal.
+- **RESET limpa todo o estado interno:** flags de sticky visibility, último valor de score/streak, e lock terminal.
+- **Armadilha histórica (corrigida 2026-04-08):** `updateHud({ status: "FINISHED" })` sem `scoreTotal`/`streak` escondia os valores finais. O status piscava entre `HIT` e `WAITING` sem debounce.
+- **Toggles de Step Quality no menu:** `index.html` agora inclui grupo "Step Quality" com toggles para `useStepQualityStreak` e `showStepQualityFeedback`, wired em `index.tsx` via `featureFlags.set()`.
+- **Arquivo:** `src/viewer/ui-service.ts`
+- **Testes:** `hud-score-visibility-regression.test.ts`, `hud-status-priority-regression.test.ts`, `hud-streak-combo-regression.test.ts`, `feature-flags-step-quality-menu-regression.test.ts`
+
+
 - Se a taxa de match entre notas OSMD e steps for < 80%, fallbacks são acionados automaticamente.
 - A monotonicidade (x nunca diminui com beat crescente) é crítica. Se quebrar, falling notes "voltam" na tela.
 - Line breaks (sistemas diferentes na partitura) são tratados com `LINE_BREAK_THRESHOLD`.
@@ -616,6 +625,8 @@ Regras de handoff:
 - ✅ **API Proxy genérico** (`api-proxy`): todas as chamadas `/v1/*` passam pela Edge Function, resolvendo CORS em preview e produção
 - ✅ **Backend como fonte única do catálogo**: `CatalogService` carrega do backend via `proxyFetchJson`, sem fallback local
 - ✅ **`proxyFetch` centralizado**: utilitário único para todas as chamadas REST ao backend
+- ✅ **Bootstrap determinístico** (2026-04-08): boot shell (`app-booting`), guard de inicialização única, auth gate z-index, sem flicker de UI
+- ✅ **HUD UX fixes** (2026-04-08): score/streak sticky visibility, status terminal priority, Step Quality flag toggles no menu
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.
