@@ -1931,17 +1931,25 @@ const init = async () => {
             // PR2: Step Quality visual feedback (WAIT mode)
             if (featureFlagSnapshot.showStepQualityFeedback) {
                 const stepAdvanced = viewAfter.currentStep > viewBefore.currentStep;
+                console.info('[StepQuality:feedback]', {
+                    schemaV: currentSchemaVersion,
+                    stepAdvanced,
+                    result: res?.result,
+                    isOn,
+                    stepBefore: viewBefore.currentStep,
+                    stepAfter: viewAfter.currentStep,
+                });
 
                 if (currentSchemaVersion === 2) {
                     // V2: Full step quality with chords, quality badge, partial hits
-                    console.debug('[StepQuality] feedback block entered', { step: viewBefore.currentStep, schemaV: currentSchemaVersion });
-
                     if (stepAdvanced) {
                         const chordSize = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
                         chordHitCount = 0;
 
                         if (chordSize > 1) {
                             chordClosure?.trigger();
+                            noteFeedbackCtrl?.showChordComplete();
+                        } else {
                             noteFeedbackCtrl?.showChordComplete();
                         }
 
