@@ -12,22 +12,20 @@ import { getConfig, getProxyAnonKey, getProxyBaseUrl } from '../config/app-confi
 import { getAuthTokenFromStorage } from './auth-storage';
 
 const PROXY_FN = 'api-proxy';
-...
+
 export async function proxyFetch(
   path: string,
   init: RequestInit = {}
 ): Promise<Response> {
   const externalToken = getAuthTokenFromStorage();
 
-  // Build custom headers
   const custom: Record<string, string> = {};
   if (externalToken) {
     custom['x-external-auth'] = `Bearer ${externalToken}`;
   }
 
-  // Forward Idempotency-Key if provided in init.headers
   const initHeaders = init.headers instanceof Headers
-    ? Object.fromEntries((init.headers as Headers).entries())
+    ? Object.fromEntries(init.headers.entries())
     : (init.headers as Record<string, string>) ?? {};
 
   if (initHeaders['Idempotency-Key'] || initHeaders['idempotency-key']) {
@@ -40,12 +38,11 @@ export async function proxyFetch(
   const proxyUrl = `${proxyBaseUrl}/functions/v1/${PROXY_FN}${path}`;
 
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    'apikey': proxyAnonKey,
+    Accept: 'application/json',
+    apikey: proxyAnonKey,
     ...custom,
   };
 
-  // Forward content-type
   if (init.body) {
     headers['Content-Type'] = initHeaders['Content-Type'] || initHeaders['content-type'] || 'application/json';
   }
@@ -58,9 +55,6 @@ export async function proxyFetch(
   });
 }
 
-/**
- * Convenience: proxyFetch + JSON parse + error handling
- */
 export async function proxyFetchJson<T = any>(
   path: string,
   init: RequestInit = {}
