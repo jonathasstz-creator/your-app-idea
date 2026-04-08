@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-04-06 — API Proxy genérico + backend como fonte única do catálogo.
+> **Última atualização:** 2026-04-08 — HUD UX fixes (score/streak sticky, status priority, Step Quality flag toggles).
 
 ---
 
@@ -21,7 +21,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | Auth & DB | Lovable Cloud (Supabase managed) |
 | MIDI | Web MIDI API (`webmidi-service.ts`) |
 | Sheet Music | OSMD (OpenSheetMusicDisplay) |
-| Testes | Vitest + jsdom (186+ testes, 18 arquivos) |
+| Testes | Vitest + jsdom (339+ testes, 32 arquivos) |
 
 > **Nota:** Este projeto consome um backend FastAPI externo em `api.devoltecomele.com` via Edge Function proxy (`api-proxy`). O catálogo, sessões e analytics vêm do backend (fonte única de verdade). O proxy resolve CORS em preview e produção. `assets/lessons.json` é usado apenas para indexação estática de metadados de trail chapters.
 
@@ -52,7 +52,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | Caminho | Responsabilidade |
 |---------|-----------------|
 | `src/main.tsx` | **Entrypoint real.** Carrega `loadRuntimeConfig()` → valida → importa `src/viewer/index.tsx` |
-| `src/viewer/index.tsx` | Orquestrador principal (~2800 linhas). Monta DOM, inicia MIDI, transport, engine, renderiza Home/Hub/Dashboard/Trainer. |
+| `src/viewer/index.tsx` | Orquestrador principal (~3000 linhas). Monta DOM, inicia MIDI, transport, engine, renderiza Home/Hub/Dashboard/Trainer. |
 | `src/viewer/catalog-service.ts` | **Serviço central de catálogo.** Carrega do backend via `proxyFetchJson('/v1/catalog')`. Sem fallback local — backend é fonte única. Indexa metadados estáticos de `lessons.json` para TrailNavigator. |
 | `src/viewer/catalog/types.ts` | Tipos do catálogo: `Trail`, `TrailLevel`, `TrailModule`, `TrailChapter`, `HandAssignment`. |
 | `src/viewer/catalog/adapter.ts` | Adapter: converte catálogo local → `Trail[]` hierárquico. |
@@ -73,7 +73,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | `src/config/app-config.ts` | Configuração centralizada: `window.__APP_CONFIG__` → `/config.json` → `import.meta.env`. |
 | `src/hooks/useLessons.ts` | Hook React: `buildLocalCatalog()` → `adaptCatalogToTrails()` → `Trail[]`. |
 | `src/pages/LessonsHubPage.tsx` | Página de catálogo React: consome `useLessons()` e renderiza capítulos reais. |
-| `src/viewer/__tests__/` | 18 arquivos de teste Vitest cobrindo regressões críticas. |
+| `src/viewer/__tests__/` | 32 arquivos de teste Vitest cobrindo regressões críticas. |
 | `public/config.json` | Config de runtime (Supabase URL, analytics mode). |
 | `assets/` | Metadados estáticos do currículo. `lessons.json` usado para indexação de trail chapters. **Não é mais fonte primária** — backend é fonte única. |
 | `src/viewer/proxy-fetch.ts` | **Utilitário centralizado de fetch via proxy.** Todas as chamadas `/v1/*` passam por aqui → Edge Function `api-proxy` → backend. Injeta `x-external-auth` + `apikey`. |
@@ -155,13 +155,13 @@ npm run build        # Produção
 
 ### Testes
 ```bash
-npx vitest run                                    # Suíte inteira (186+ testes)
+npx vitest run                                    # Suíte inteira (339+ testes)
 npx vitest run src/viewer/__tests__/              # Apenas testes do viewer
 npx vitest run src/viewer/__tests__/polyphony     # Arquivo específico
 npx vitest --watch                                # Watch mode
 ```
 
-### Cobertura de testes atual (18 arquivos)
+### Cobertura de testes atual (32 arquivos)
 | Arquivo | Cobertura |
 |---------|-----------|
 | `auth-storage.test.ts` | Token extraction, sync, clear, nested structures |
@@ -169,17 +169,32 @@ npx vitest --watch                                # Watch mode
 | `analytics-client.test.ts` | buildHeaders real, fetchOverview, cache, fallback |
 | `badge-independence.test.ts` | MIDI vs Backend badges independentes |
 | `beat-to-x-mapping-fallbacks.test.ts` | Monotonicidade, fallback triggers |
+| `bootstrap-regression.test.ts` | Boot shell, auth gate z-index, single init guard, route activation |
 | `catalog-service.test.ts` | Cache, dedup, chapter→lesson mapping, indexação estática, fallback local |
 | `complete-payload-invariants.test.ts` | local_date São Paulo, fire-once guard |
+| `dashboard-ux-regression.test.tsx` | Dashboard UX rendering |
 | `feature-flags-layers.test.ts` | Precedência de 4 camadas, JSON corrompido |
+| `feature-flags-step-quality-menu-regression.test.ts` | Toggles de Step Quality no menu UI |
+| `feature-flags-subscribe.test.ts` | Subscribe reativo no flag store |
 | `fire-and-forget-complete.test.ts` | POST /complete resiliente a falhas |
 | `hand-split-rule.test.ts` | C4 (60) = mão direita |
+| `hud-score-visibility-regression.test.ts` | Score sticky visibility, não desaparece em FINISHED |
+| `hud-status-priority-regression.test.ts` | FINISHED terminal, não sobrescrito por HIT/WAITING |
+| `hud-streak-combo-regression.test.ts` | Streak sticky, reset sem esconder, não some em FINISHED |
 | `lesson-engine-invariants.test.ts` | Score, streak, AttemptLog, forceEnd |
 | `lesson-engine-timer-integration.test.ts` | Integração engine + timer |
 | `lesson-session-controller.test.ts` | Controlador de sessão |
 | `lesson-timer.test.ts` | Timer unitário |
 | `lesson-timer-regression.test.ts` | Timer básico com fake timers |
+| `midi-onboarding-controller.test.ts` | MIDI onboarding flow controller |
+| `midi-onboarding-runtime.test.tsx` | MIDI onboarding runtime React |
+| `midi-onboarding.test.ts` | MIDI onboarding integration |
 | `polyphony-chords.test.ts` | Chord expansion, PARTIAL_HIT, miss window |
+| `progress-index.test.ts` | Progress index calculations |
+| `step-quality-engine.test.ts` | Step quality classification engine |
+| `step-quality-ui.test.ts` | Step quality UI controllers |
+| `step-quality-wiring-regression.test.ts` | Step quality wiring guards |
+| `task-completion-v2-scoring.test.ts` | V2 scoring contract |
 | `timer-regression-end-state.test.ts` | shouldStartTimer guard, timer pós-ended |
 | `transposition-pipeline.test.ts` | clampMidi, V1/V2, imutabilidade |
 
