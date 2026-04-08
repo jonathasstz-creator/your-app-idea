@@ -71,7 +71,7 @@ describe('StepQualityBadgeController', () => {
     expect(el.hidden).toBe(false);
 
     // Advance past show duration (1200ms)
-    vi.advanceTimersByTime(1200);
+    vi.advanceTimersByTime(600);
     expect(el.classList.contains('quality-badge-exit')).toBe(true);
 
     // Advance past exit animation (300ms)
@@ -136,20 +136,20 @@ describe('NoteFeedbackController', () => {
 
   it('showChordComplete shows checkmark and auto-clears', () => {
     feedback.showChordComplete();
-    expect(el.textContent).toBe('✓ Certo');
+    expect(el.textContent).toBe('✓');
     expect(el.classList.contains('is-chord-complete')).toBe(true);
 
-    vi.advanceTimersByTime(1200);
+    vi.advanceTimersByTime(600);
     expect(el.textContent).toBe('');
     expect(el.className).toBe('judge-feedback');
   });
 
   it('showWrongNote shows error and auto-clears', () => {
     feedback.showWrongNote();
-    expect(el.textContent).toBe('✗ Errado');
+    expect(el.textContent).toBe('✗');
     expect(el.classList.contains('is-wrong-brief')).toBe(true);
 
-    vi.advanceTimersByTime(800);
+    vi.advanceTimersByTime(400);
     expect(el.textContent).toBe('');
   });
 
@@ -172,7 +172,7 @@ describe('NoteFeedbackController', () => {
     feedback.showWrongNote();
     feedback.showChordComplete();
     // Should show chord complete, not wrong
-    expect(el.textContent).toBe('✓ Certo');
+    expect(el.textContent).toBe('✓');
     expect(el.classList.contains('is-chord-complete')).toBe(true);
   });
 });
