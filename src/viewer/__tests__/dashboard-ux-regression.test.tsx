@@ -146,7 +146,7 @@ describe("P0 — Linguagem pedagógica (sem sci-fi)", () => {
     "Resumo da Prática",
     "Dica do Professor",
     "Melhor sequência",
-    "Melhor pontuação",
+    "Recorde pessoal",
   ];
 
   it.each(requiredLabels)("contém label pedagógico: '%s'", (label) => {
