@@ -2,7 +2,7 @@
 
 Contexto operacional para agentes de IA. Fonte de verdade para fluxo real, paths canônicos e comportamento atual.
 
-> **Última atualização:** 2026-04-08 — HUD UX fixes (score/streak sticky, status priority, Step Quality flag toggles).
+> **Última atualização:** 2026-04-08 — Boot state machine (single owner via `window.__appBoot__`), failure path fix, config validation hardened.
 
 ---
 

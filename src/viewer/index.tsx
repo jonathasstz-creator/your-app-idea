@@ -3025,14 +3025,25 @@ const startApp = async () => {
         await init();
     } catch (err) {
         console.error('[INIT] ❌ Falha ao inicializar app', err);
-        const message = err instanceof Error ? err.message : String(err);
-        alert(`Falha ao inicializar aplicação: ${message}`);
+        // Transition to failed state — boot shell stays, app stays hidden.
+        if (window.__appBoot__) {
+            window.__appBoot__.fail(err);
+        } else {
+            // Fallback if __appBoot__ somehow missing
+            document.body.classList.add('app-failed');
+            document.body.dataset.appState = 'failed';
+        }
+        return; // Do NOT transition to ready
     }
 
-    // Remove boot shell — app is ready
-    document.body.classList.remove('app-booting');
-    document.body.dataset.appState = 'ready';
-    document.body.setAttribute('aria-busy', 'false');
+    // Only reach here on successful init
+    if (window.__appBoot__) {
+        window.__appBoot__.ready();
+    } else {
+        document.body.classList.remove('app-booting');
+        document.body.dataset.appState = 'ready';
+        document.body.setAttribute('aria-busy', 'false');
+    }
 };
 
 // Check if DOM is already loaded (because script is deferred)

@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-04-08 — HUD UX fixes (score/streak sticky, status priority, Step Quality flag toggles).
+> **Última atualização:** 2026-04-08 — Boot state machine (single owner), failure path fix, config validation hardened.
 
 ---
 
@@ -169,6 +169,7 @@ npx vitest --watch                                # Watch mode
 | `analytics-client.test.ts` | buildHeaders real, fetchOverview, cache, fallback |
 | `badge-independence.test.ts` | MIDI vs Backend badges independentes |
 | `beat-to-x-mapping-fallbacks.test.ts` | Monotonicidade, fallback triggers |
+| `boot-state-machine.test.ts` | Boot state transitions, failure path guard, config validation |
 | `bootstrap-regression.test.ts` | Boot shell, auth gate z-index, single init guard, route activation |
 | `catalog-service.test.ts` | Cache, dedup, chapter→lesson mapping, indexação estática, fallback local |
 | `complete-payload-invariants.test.ts` | local_date São Paulo, fire-once guard |
@@ -241,20 +242,39 @@ npx vitest --watch                                # Watch mode
 
 ## 6. Fluxos críticos do sistema
 
-### 6.1 Autenticação (non-blocking)
+### 6.1 Boot State Machine (single owner)
 ```
+index.html
+  → body.app-booting (CSS hides #app, shows #boot-splash)
+
 src/main.tsx
-  → loadRuntimeConfig()         # Carrega /config.json
-  → validateConfig()            # Checa supabaseUrl + anonKey
+  → Creates window.__appBoot__ { ready(), fail(), getState() }  # SOLE OWNER of boot state
+  → loadRuntimeConfig()
+  → validateConfig()
+    → Production + config missing → THROWS (boot fails with error overlay)
+    → Dev + config missing → warn + continue
   → import src/viewer/index.tsx
-    → ensureAuthenticated()     # Tenta verificar sessão
-      → Se config ausente: resolve silenciosamente (app continua)
-      → Se sem sessão: resolve silenciosamente (app continua)
-      → Se com sessão: syncSessionToLegacyStorage()
-    → init()                    # SEMPRE executa, independente de auth
+    → startApp()
+      → ensureAuthenticated()
+        → authenticated → syncSession, continue
+        → unauthenticated → login overlay BLOCKS until user logs in
+        → disabled (no config) → continue without auth
+      → init()
+        → SUCCESS → window.__appBoot__.ready()  # Removes boot shell
+        → FAILURE → window.__appBoot__.fail(err) + return  # Stays in failed state
 ```
 
-> **Decisão arquitetural:** Auth é non-blocking. O app funciona sem sessão ativa. Isso permite que o catálogo local e a navegação funcionem 100% offline.
+> **Decisão arquitetural:** `main.tsx` é o dono único do lifecycle de boot. `index.tsx` NUNCA manipula `body.classList` ou `dataset.appState` diretamente — usa `window.__appBoot__`. Transição `failed → ready` é bloqueada (irreversível).
+
+### 6.1.1 Autenticação (blocking com fallback)
+```
+ensureAuthenticated()
+  → Se config ausente: retorna { status: 'disabled' } (app continua sem auth)
+  → Se sessão existe: syncSessionToLegacyStorage() → { status: 'authenticated' }
+  → Se sem sessão: renderiza #auth-gate (z-index 100000) → BLOQUEIA até login → { status: 'authenticated' }
+```
+
+> **Nota:** Auth é blocking para o viewer (init só roda após auth resolver), mas non-blocking no sentido de que o app funciona sem config de auth (`disabled`).
 
 ### 6.2 Carregamento de catálogo (backend-first via proxy)
 ```
@@ -626,6 +646,7 @@ Regras de handoff:
 - ✅ **Backend como fonte única do catálogo**: `CatalogService` carrega do backend via `proxyFetchJson`, sem fallback local
 - ✅ **`proxyFetch` centralizado**: utilitário único para todas as chamadas REST ao backend
 - ✅ **Bootstrap determinístico** (2026-04-08): boot shell (`app-booting`), guard de inicialização única, auth gate z-index, sem flicker de UI
+- ✅ **Boot state machine** (2026-04-08): `window.__appBoot__` como dono único do lifecycle, `failed → ready` bloqueado, config inválida em prod é fatal
 - ✅ **HUD UX fixes** (2026-04-08): score/streak sticky visibility, status terminal priority, Step Quality flag toggles no menu
 
 ### Candidato a remoção
