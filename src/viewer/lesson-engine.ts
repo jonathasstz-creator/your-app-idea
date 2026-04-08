@@ -953,6 +953,7 @@ class LessonEngineV2 implements LessonEngineApi {
       // when HARD_ERROR_BREAK_THRESHOLD is exceeded (handled in onMidiInput).
       // Do NOT reset stepQualityState on MISS — errors accumulate across retries.
       this.stepState.clear();
+      this.chordFirstHitTime = null;
       if (!this.useStepQuality) {
         this.stepQualityState = createStepQualityState();
       }
