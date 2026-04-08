@@ -295,9 +295,9 @@ export class PianoRollController {
         this.noteInputHandler(midi, 100, "mouse");
       }
       
-      // 2. Audio feedback (se audio service estiver disponível)
-      if (this.audioService) {
-        this.audioService.playMidiNote(midi, 0.2, 100).catch(err => {
+      // 2. Audio feedback — only if audio is enabled by user
+      if (this.audioService && this.audioService.getEnabled()) {
+        this.audioService.playMidiNote(midi, 0.3, 100).catch(err => {
           console.warn(`[VirtualKeyboard] Erro ao tocar nota ${midi}:`, err);
         });
       }
@@ -314,8 +314,8 @@ export class PianoRollController {
         this.noteInputHandler(midi, 0, "mouse");
       }
       
-      // Parar audio (se necessário)
-      if (this.audioService) {
+      // Parar audio — only if enabled
+      if (this.audioService && this.audioService.getEnabled()) {
         this.audioService.stopNote(midi);
       }
     };
