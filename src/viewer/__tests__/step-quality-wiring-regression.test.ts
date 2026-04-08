@@ -211,7 +211,7 @@ describe('Anti-regression: Guard matrix', () => {
     expect(badgeEl.textContent).toBe('Perfeito');
   });
 
-  it('V1 + both flags ON → no feedback (guard blocks)', () => {
+  it('V1 + both flags ON → no quality badge but note feedback works', () => {
     const v1Engine = createEngineV1();
     const ctx = makeCtx({
       engine: v1Engine,
@@ -225,7 +225,9 @@ describe('Anti-regression: Guard matrix', () => {
     v1Engine.loadLesson(makeV1Lesson());
     simulateMidiInput(ctx, 60);
 
-    expect(badgeEl.hidden).toBe(true); // no badge
+    expect(badgeEl.hidden).toBe(true); // no quality badge for V1
+    // But note feedback (✓) should fire for V1
+    expect(feedbackEl.className).toContain('is-chord-complete');
   });
 
   it('V2 + FILM + both flags ON → no feedback (guard blocks)', () => {
