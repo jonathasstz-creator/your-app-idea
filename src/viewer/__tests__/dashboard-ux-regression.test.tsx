@@ -99,12 +99,13 @@ describe("P0 — Latência em segundos", () => {
   });
 
   it("tabela de sessões mostra latência em segundos", async () => {
-    const { container } = render(<Dashboard stats={baseStats} status="live" />);
+    const { container, rerender } = render(<Dashboard stats={baseStats} status="live" />);
     // Sessions table is in the "performance" tab
     const perfTab = Array.from(container.querySelectorAll("button")).find((b) =>
       b.textContent?.includes("DESEMPENHO")
     );
     await act(async () => { perfTab?.click(); });
+    await act(async () => { rerender(<Dashboard stats={baseStats} status="live" />); });
 
     // 145ms → 0.15s (rounded)
     expect(container.textContent).toContain("0.15s");
