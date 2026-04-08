@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-04-08 — Boot state machine (single owner), failure path fix, config validation hardened.
+> **Última atualização:** 2026-04-08 — Audio pipeline unificado, síntese piano-like, input convergence (mouse/keyboard/MIDI).
 
 ---
 
@@ -21,7 +21,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | Auth & DB | Lovable Cloud (Supabase managed) |
 | MIDI | Web MIDI API (`webmidi-service.ts`) |
 | Sheet Music | OSMD (OpenSheetMusicDisplay) |
-| Testes | Vitest + jsdom (339+ testes, 32 arquivos) |
+| Testes | Vitest + jsdom (360+ testes, 34 arquivos) |
 
 > **Nota:** Este projeto consome um backend FastAPI externo em `api.devoltecomele.com` via Edge Function proxy (`api-proxy`). O catálogo, sessões e analytics vêm do backend (fonte única de verdade). O proxy resolve CORS em preview e produção. `assets/lessons.json` é usado apenas para indexação estática de metadados de trail chapters.
 
@@ -368,6 +368,7 @@ featureFlags.init(remoteProvider?)
 | Tipos do task/endscreen | `src/viewer/types/task.ts` |
 | Tipos de analytics | `src/viewer/analytics-client.ts` (interfaces inline) |
 | Tipos de auth | `src/viewer/auth/types.ts` |
+| Audio service | `src/viewer/audio-service.ts` (síntese piano-like, ADSR, compressor) |
 | Serviço de catálogo | `src/viewer/catalog-service.ts` (carrega via `proxyFetchJson`) |
 | Proxy centralizado | `src/viewer/proxy-fetch.ts` (todas as chamadas /v1/*) |
 | Edge Function proxy | `supabase/functions/api-proxy/index.ts` |

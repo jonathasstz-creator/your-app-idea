@@ -150,6 +150,38 @@ Se qualquer condição acima for falsa, o bloco de feedback é silenciosamente i
 
 ---
 
+## Audio Pipeline (atualizado 2026-04-08)
+
+### Arquitetura
+
+```
+Input (mouse/keyboard/MIDI) → handleNoteInput() → audioService.playMidiNote() / stopNote()
+                                                 → engine.onMidiInput() (lógica)
+                                                 → Step Quality feedback (visual)
+```
+
+**Decisão arquitetural:** `handleNoteInput` em `index.tsx` é o ponto único de áudio. O `piano-roll-controller` NÃO toca áudio diretamente (evita double-trigger).
+
+### AudioService (`src/viewer/audio-service.ts`)
+
+| Aspecto | Implementação |
+|---------|--------------|
+| Síntese | Layered: triangle (fund.) + sine (2x, 15%) + sine (3x, 5% decay rápido) |
+| Compressor | DynamicsCompressorNode (-24dB threshold, ratio 4:1) |
+| Envelope | ADSR adaptativo: attack 8ms, decay/release escalam com duração |
+| Velocity | Curva quadrática: `(v/127)² × 0.35` |
+| Auto-play falling | `getAutoPlayFalling()` — OFF por padrão |
+
+### Guards de áudio
+- `audioService.getEnabled()` — master gate (toggle do usuário)
+- `audioService.getAutoPlayFalling()` — gate para auto-play de falling notes no piano-roll
+
+### Testes
+- `audio-input-pipeline.test.ts` — estado, gates, convergência
+- `audio-step-quality-convergence.test.ts` — source independence, anti-double-trigger
+
+---
+
 ## Guards que bloqueiam execução em index.tsx
 
 O handler MIDI em `index.tsx` tem múltiplos guards. Para debugging, verificar:
@@ -166,10 +198,10 @@ O handler MIDI em `index.tsx` tem múltiplos guards. Para debugging, verificar:
 ## Testes
 
 ```bash
-npx vitest run                           # Suíte completa (339+ testes)
+npx vitest run                           # Suíte completa (360+ testes)
 npx vitest run src/viewer/__tests__/     # Apenas viewer
 ```
 
 **Cobertura importante ausente:** `index.tsx` não tem testes diretos. Bugs de wiring (controllers, snapshots, guards) só são detectáveis por inspeção manual ou testes de integração.
 
-**Módulos com testes obrigatórios:** `lesson-engine`, `auth-storage`, `analytics-client`, `beat-to-x-mapping`, `lesson-transposer`, `catalog-service`, `ui-service`.
+**Módulos com testes obrigatórios:** `lesson-engine`, `auth-storage`, `analytics-client`, `beat-to-x-mapping`, `lesson-transposer`, `catalog-service`, `ui-service`, `audio-service`.
