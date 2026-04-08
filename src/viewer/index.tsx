@@ -439,6 +439,7 @@ const init = async () => {
     const flagStepQualityStreakToggle = document.getElementById("flag-step-quality-streak-toggle") as HTMLInputElement | null;
     const flagStepQualityFeedbackToggle = document.getElementById("flag-step-quality-feedback-toggle") as HTMLInputElement | null;
     const flagResizableSheetToggle = document.getElementById("flag-resizable-sheet-toggle") as HTMLInputElement | null;
+    const flagShowStreakToggle = document.getElementById("flag-show-streak-toggle") as HTMLInputElement | null;
     const sheetResizeHandle = document.getElementById("sheet-resize-handle") as HTMLElement | null;
     const hudGlassEl = document.querySelector<HTMLElement>(".hud-glass");
     const hudActionsEl = document.querySelector<HTMLElement>(".hud-actions");
@@ -554,8 +555,13 @@ const init = async () => {
             featureFlags.set("resizableSheet", !!flagResizableSheetToggle.checked, "runtime");
         });
     }
+    if (flagShowStreakToggle) {
+        flagShowStreakToggle.checked = featureFlagSnapshot.showStreakCounter;
+        flagShowStreakToggle.addEventListener("change", () => {
+            featureFlags.set("showStreakCounter", !!flagShowStreakToggle.checked, "runtime");
+        });
+    }
 
-    // --- Sheet Resize Handle Logic (gated by resizableSheet flag) ---
     {
         let isResizing = false;
         let startY = 0;
@@ -2235,7 +2241,9 @@ const init = async () => {
         if (flagStepQualityStreakToggle) flagStepQualityStreakToggle.checked = featureFlagSnapshot.useStepQualityStreak;
         if (flagStepQualityFeedbackToggle) flagStepQualityFeedbackToggle.checked = featureFlagSnapshot.showStepQualityFeedback;
         if (flagResizableSheetToggle) flagResizableSheetToggle.checked = featureFlagSnapshot.resizableSheet;
+        if (flagShowStreakToggle) flagShowStreakToggle.checked = featureFlagSnapshot.showStreakCounter;
         applyHideHud(featureFlagSnapshot.hideHud);
+        ui.setShowStreak(featureFlagSnapshot.showStreakCounter);
     };
 
     const applyHideHud = (hide: boolean) => {
@@ -2285,6 +2293,7 @@ const init = async () => {
             }
         }
         applyHideHud(next.hideHud);
+        ui.setShowStreak(next.showStreakCounter);
         prevFlagSnapshot = next;
         console.log("[FeatureFlags] update", { source: meta.source, name: meta.name, next });
     });

@@ -30,6 +30,8 @@ export class UIService {
   private lastStreak: number | undefined;
   // Track terminal status to prevent overwrite
   private isTerminal = false;
+  // Gate streak visibility via feature flag
+  private showStreakFlag = true;
 
   constructor() {
     console.log("[UI] Elementos encontrados:", {
@@ -134,15 +136,16 @@ export class UIService {
       }
     }
 
-    // --- Streak (sticky: once shown, stays visible) ---
+    // --- Streak (sticky: once shown, stays visible; gated by flag) ---
     if (this.hudStreak) {
-      if (streak !== undefined) {
+      if (!this.showStreakFlag) {
+        this.hudStreak.style.display = "none";
+      } else if (streak !== undefined) {
         this.lastStreak = streak;
         this.streakShown = true;
         this.hudStreak.textContent = `x${streak}`;
         this.hudStreak.style.display = "block";
       } else if (this.streakShown) {
-        // Keep visible with last known value (don't hide)
         this.hudStreak.style.display = "block";
       } else {
         this.hudStreak.style.display = "none";
@@ -188,6 +191,13 @@ export class UIService {
     } else {
       this.feedback.textContent = "Aguardando…";
       this.feedback.className = "judge-feedback";
+    }
+  }
+
+  setShowStreak(enabled: boolean) {
+    this.showStreakFlag = enabled;
+    if (this.hudStreak) {
+      this.hudStreak.style.display = enabled && this.streakShown ? "block" : (enabled ? "" : "none");
     }
   }
 }

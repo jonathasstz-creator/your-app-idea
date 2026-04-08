@@ -9,7 +9,8 @@ export type FeatureFlagName =
   | 'enableMidiOnboarding'
   | 'hideHud'
   | 'enableGuestMode'
-  | 'resizableSheet';
+  | 'resizableSheet'
+  | 'showStreakCounter';
 
 export type FeatureFlags = Record<FeatureFlagName, boolean>;
 export type FlagSource = 'default' | 'localStorage' | 'remote' | 'runtime';
@@ -36,4 +37,5 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   hideHud: false,
   enableGuestMode: false,
   resizableSheet: false,
+  showStreakCounter: true,
 };
