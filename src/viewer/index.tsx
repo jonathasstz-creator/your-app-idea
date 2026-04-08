@@ -1942,16 +1942,21 @@ const init = async () => {
 
                 if (currentSchemaVersion === 2) {
                     // V2: Full step quality with chords, quality badge, partial hits
+
+                    // If engine reset chord state (timeout), sync UI
+                    if (res?.chordReset) {
+                        chordHitCount = 0;
+                        noteFeedbackCtrl?.clear();
+                    }
+
                     if (stepAdvanced) {
                         const chordSize = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
                         chordHitCount = 0;
 
                         if (chordSize > 1) {
                             chordClosure?.trigger();
-                            noteFeedbackCtrl?.showChordComplete();
-                        } else {
-                            noteFeedbackCtrl?.showChordComplete();
                         }
+                        noteFeedbackCtrl?.showChordComplete();
 
                         // Quality badge (only when step quality tracking is active)
                         if (featureFlagSnapshot.useStepQualityStreak) {
@@ -1960,10 +1965,11 @@ const init = async () => {
                             if (lastQ) qualityBadge?.show(lastQ);
                         }
                     } else if (res?.result === 'HIT') {
-                        chordHitCount += 1;
-                        const chordTotal = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
-                        if (chordTotal > 1) {
-                            noteFeedbackCtrl?.showPartialHit(chordHitCount, chordTotal);
+                        // Use engine's chord progress as source of truth
+                        const cp = res.chordProgress;
+                        if (cp && cp.total > 1) {
+                            chordHitCount = cp.hit;
+                            noteFeedbackCtrl?.showPartialHit(cp.hit, cp.total);
                         }
                     } else if (res?.result === 'MISS') {
                         chordHitCount = 0;
