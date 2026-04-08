@@ -2,7 +2,7 @@
 
 Contexto operacional para agentes de IA. Fonte de verdade para fluxo real, paths canônicos e comportamento atual.
 
-> **Última atualização:** 2026-04-08 — Audio pipeline unificado (mouse/keyboard/MIDI), síntese piano-like, auto-play falling notes gated.
+> **Última atualização:** 2026-04-08 — Step Quality V1 feedback, flag toggle anti-flicker, audio pipeline unificado.
 
 ---
 
@@ -109,14 +109,16 @@ O `UIService` (`src/viewer/ui-service.ts`) implementa:
 
 ## Step Quality UX/HUD — Comportamento Real
 
-### Pré-condições para o feedback visual aparecer
+### Pré-condições para o feedback visual (atualizado 2026-04-08)
 
-1. **Flag `showStepQualityFeedback` = true** (via localStorage, remote ou runtime)
-2. **Flag `useStepQualityStreak` = true** (ativa o scoring no engine)
-3. **Lição V2** (`currentSchemaVersion === 2`)
-4. **Modo WAIT** (FILM usa streak legado, não step quality)
+**Note feedback (✓/✗)** — requer apenas:
+1. **Flag `showStepQualityFeedback` = true**
+2. **Modo WAIT** (FILM usa streak legado)
+3. Funciona para **V1 e V2**
 
-Se qualquer condição acima for falsa, o bloco de feedback é silenciosamente ignorado.
+**Quality badge (Perfeito/Ótimo/Boa/Recuperou)** — requer adicionalmente:
+4. **Flag `useStepQualityStreak` = true**
+5. **Lição V2** (`currentSchemaVersion === 2`)
 
 ### Arquivos do Step Quality
 
@@ -186,22 +188,31 @@ Input (mouse/keyboard/MIDI) → handleNoteInput() → audioService.playMidiNote(
 
 O handler MIDI em `index.tsx` tem múltiplos guards. Para debugging, verificar:
 
-1. `currentSchemaVersion === 2` — bloqueia V1
-2. `currentMode === 'WAIT'` — bloqueia FILM
-3. `featureFlagSnapshot.showStepQualityFeedback` — bloqueia se flag off
-4. `featureFlagSnapshot.useStepQualityStreak` — bloqueia scoring
+1. `featureFlagSnapshot.showStepQualityFeedback` — bloqueia note feedback se off
+2. `featureFlagSnapshot.useStepQualityStreak` — bloqueia quality badge se off
+3. `currentSchemaVersion === 2` — bloqueia quality badge (V2-only); note feedback funciona em V1
+4. `currentMode === 'WAIT'` — bloqueia FILM
 5. `engine !== null` — bloqueia se engine não inicializado
 6. `engine.isEnded()` — bloqueia após fim da lição
+
+### Flag toggle subscriber (anti-flicker, corrigido 2026-04-08)
+
+O subscriber de `featureFlags.subscribe()` compara `prevFlagSnapshot` vs `next` antes de reconstruir sheet/pianoRoll. Flags não relacionadas **não** causam rebuild da partitura.
 
 ---
 
 ## Testes
 
 ```bash
-npx vitest run                           # Suíte completa (360+ testes)
+npx vitest run                           # Suíte completa (370+ testes, 36 arquivos)
 npx vitest run src/viewer/__tests__/     # Apenas viewer
 ```
 
 **Cobertura importante ausente:** `index.tsx` não tem testes diretos. Bugs de wiring (controllers, snapshots, guards) só são detectáveis por inspeção manual ou testes de integração.
 
 **Módulos com testes obrigatórios:** `lesson-engine`, `auth-storage`, `analytics-client`, `beat-to-x-mapping`, `lesson-transposer`, `catalog-service`, `ui-service`, `audio-service`.
+
+### Testes anti-regressão recentes (2026-04-08)
+- `flag-toggle-sheet-flicker-regression.test.ts` — flag toggle não causa rebuild de sheet
+- `step-quality-v1-feedback-regression.test.ts` — V1 recebe note feedback
+- `step-quality-wiring-regression.test.ts` — guard matrix atualizada para V1 feedback
