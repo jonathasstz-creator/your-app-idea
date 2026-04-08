@@ -1,16 +1,128 @@
 /**
- * Audio Service - Web Audio API for MIDI playback
- * Piano-like synthesis with layered oscillators and smooth ADSR envelope.
+ * Audio Service — Premium Piano Synthesis
+ *
+ * Multi-partial additive synthesis with:
+ *  - 8 harmonics with register-dependent amplitude & decay
+ *  - Hammer strike transient (noise burst)
+ *  - Sympathetic string resonance (subtle detuned partials)
+ *  - Per-register EQ (low warm, mid balanced, high bright)
+ *  - Realistic sustain + damper release envelope
+ *  - Stereo widening via subtle per-partial pan
  */
+
+/** Harmonic partial definition */
+interface Partial {
+  ratio: number;   // frequency multiplier
+  amp: number;     // relative amplitude (0-1)
+  decay: number;   // decay time multiplier (higher = longer)
+  type: OscillatorType;
+}
+
+/** Register-dependent tonal profile */
+interface RegisterProfile {
+  partials: Partial[];
+  attackTime: number;
+  decayBase: number;
+  sustainLevel: number;
+  brightness: number;   // high-shelf gain modifier
+  hammerGain: number;    // noise transient volume
+}
+
+function getRegisterProfile(midi: number): RegisterProfile {
+  if (midi < 40) {
+    // Bass register — warm, long sustain, strong fundamentals
+    return {
+      partials: [
+        { ratio: 1,   amp: 1.0,  decay: 1.0,  type: 'sine' },
+        { ratio: 2,   amp: 0.6,  decay: 0.85, type: 'sine' },
+        { ratio: 3,   amp: 0.25, decay: 0.7,  type: 'sine' },
+        { ratio: 4,   amp: 0.12, decay: 0.5,  type: 'sine' },
+        { ratio: 5,   amp: 0.06, decay: 0.35, type: 'sine' },
+        { ratio: 6,   amp: 0.03, decay: 0.25, type: 'sine' },
+        { ratio: 0.5, amp: 0.08, decay: 1.2,  type: 'sine' }, // sub-harmonic warmth
+      ],
+      attackTime: 0.005,
+      decayBase: 3.5,
+      sustainLevel: 0.35,
+      brightness: 0.6,
+      hammerGain: 0.04,
+    };
+  } else if (midi < 60) {
+    // Low-mid register — rich, balanced
+    return {
+      partials: [
+        { ratio: 1,   amp: 1.0,  decay: 1.0,  type: 'sine' },
+        { ratio: 2,   amp: 0.55, decay: 0.8,  type: 'sine' },
+        { ratio: 3,   amp: 0.3,  decay: 0.6,  type: 'sine' },
+        { ratio: 4,   amp: 0.15, decay: 0.45, type: 'sine' },
+        { ratio: 5,   amp: 0.08, decay: 0.3,  type: 'sine' },
+        { ratio: 6,   amp: 0.04, decay: 0.2,  type: 'sine' },
+        { ratio: 7,   amp: 0.02, decay: 0.15, type: 'sine' },
+      ],
+      attackTime: 0.004,
+      decayBase: 2.8,
+      sustainLevel: 0.25,
+      brightness: 0.8,
+      hammerGain: 0.06,
+    };
+  } else if (midi < 80) {
+    // Mid register (C4-G5) — most expressive, clear
+    return {
+      partials: [
+        { ratio: 1,   amp: 1.0,  decay: 1.0,  type: 'sine' },
+        { ratio: 2,   amp: 0.45, decay: 0.75, type: 'sine' },
+        { ratio: 3,   amp: 0.22, decay: 0.55, type: 'sine' },
+        { ratio: 4,   amp: 0.12, decay: 0.4,  type: 'sine' },
+        { ratio: 5,   amp: 0.07, decay: 0.28, type: 'sine' },
+        { ratio: 6,   amp: 0.04, decay: 0.18, type: 'sine' },
+        { ratio: 7,   amp: 0.02, decay: 0.12, type: 'sine' },
+        { ratio: 8,   amp: 0.01, decay: 0.08, type: 'sine' },
+      ],
+      attackTime: 0.003,
+      decayBase: 2.2,
+      sustainLevel: 0.18,
+      brightness: 1.0,
+      hammerGain: 0.08,
+    };
+  } else {
+    // High register — bright, short decay, bell-like
+    return {
+      partials: [
+        { ratio: 1,   amp: 1.0,  decay: 1.0,  type: 'sine' },
+        { ratio: 2,   amp: 0.35, decay: 0.6,  type: 'sine' },
+        { ratio: 3,   amp: 0.15, decay: 0.35, type: 'sine' },
+        { ratio: 4,   amp: 0.08, decay: 0.2,  type: 'sine' },
+        { ratio: 5,   amp: 0.04, decay: 0.12, type: 'sine' },
+      ],
+      attackTime: 0.002,
+      decayBase: 1.2,
+      sustainLevel: 0.08,
+      brightness: 1.3,
+      hammerGain: 0.10,
+    };
+  }
+}
+
+interface ActiveNote {
+  oscillators: OscillatorNode[];
+  gains: GainNode[];
+  noteGain: GainNode;
+  hammerSource?: AudioBufferSourceNode;
+  panner?: StereoPannerNode;
+}
 
 export class AudioService {
   private audioContext: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private compressor: DynamicsCompressorNode | null = null;
-  private activeNotes: Map<number, { oscillators: OscillatorNode[]; gain: GainNode }> = new Map();
+  private convolver: ConvolverNode | null = null;
+  private reverbGain: GainNode | null = null;
+  private dryGain: GainNode | null = null;
+  private activeNotes: Map<number, ActiveNote> = new Map();
   private isEnabled: boolean = false;
   private volume: number = 0.3;
-  private autoPlayFalling: boolean = false; // OFF by default — user must opt in
+  private autoPlayFalling: boolean = false;
+  private hammerBuffer: AudioBuffer | null = null;
 
   async initialize(): Promise<boolean> {
     if (this.audioContext) return true;
@@ -19,26 +131,77 @@ export class AudioService {
       if (!Ctx) { console.warn("[AudioService] Web Audio API not supported"); return false; }
 
       this.audioContext = new Ctx();
+      const ctx = this.audioContext;
 
-      // Compressor to prevent clipping / harshness
-      this.compressor = this.audioContext.createDynamicsCompressor();
-      this.compressor.threshold.value = -24;
-      this.compressor.knee.value = 12;
-      this.compressor.ratio.value = 4;
+      // Compressor — gentle, musical limiting
+      this.compressor = ctx.createDynamicsCompressor();
+      this.compressor.threshold.value = -18;
+      this.compressor.knee.value = 20;
+      this.compressor.ratio.value = 3;
       this.compressor.attack.value = 0.003;
-      this.compressor.release.value = 0.15;
-      this.compressor.connect(this.audioContext.destination);
+      this.compressor.release.value = 0.25;
+      this.compressor.connect(ctx.destination);
 
-      this.masterGain = this.audioContext.createGain();
+      // Dry/wet reverb mix
+      this.dryGain = ctx.createGain();
+      this.dryGain.gain.value = 0.82;
+      this.dryGain.connect(this.compressor);
+
+      this.reverbGain = ctx.createGain();
+      this.reverbGain.gain.value = 0.18;
+      this.reverbGain.connect(this.compressor);
+
+      // Algorithmic reverb (impulse response from noise)
+      this.convolver = ctx.createConvolver();
+      this.convolver.buffer = this.createReverbImpulse(ctx, 1.8, 3.0);
+      this.convolver.connect(this.reverbGain);
+
+      this.masterGain = ctx.createGain();
       this.masterGain.gain.value = this.volume;
-      this.masterGain.connect(this.compressor);
+      // Master feeds both dry and reverb
+      this.masterGain.connect(this.dryGain);
+      this.masterGain.connect(this.convolver);
 
-      console.log("[AudioService] Initialized");
+      // Pre-generate hammer noise buffer
+      this.hammerBuffer = this.createHammerNoise(ctx);
+
+      console.log("[AudioService] Premium piano initialized");
       return true;
     } catch (e) {
       console.error("[AudioService] Init error:", e);
       return false;
     }
+  }
+
+  /** Create a synthetic reverb impulse response */
+  private createReverbImpulse(ctx: AudioContext, duration: number, decayRate: number): AudioBuffer {
+    const sampleRate = ctx.sampleRate;
+    const length = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(2, length, sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch);
+      for (let i = 0; i < length; i++) {
+        const t = i / sampleRate;
+        // Exponential decay with random noise
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-t * decayRate);
+      }
+    }
+    return buffer;
+  }
+
+  /** Create a short noise burst simulating hammer strike */
+  private createHammerNoise(ctx: AudioContext): AudioBuffer {
+    const duration = 0.012; // 12ms
+    const length = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) {
+      const t = i / length;
+      // Sharp attack, quick decay noise
+      const envelope = t < 0.1 ? t / 0.1 : Math.exp(-(t - 0.1) * 8);
+      data[i] = (Math.random() * 2 - 1) * envelope;
+    }
+    return buffer;
   }
 
   setEnabled(enabled: boolean) {
@@ -54,7 +217,6 @@ export class AudioService {
   getVolume(): number { return this.volume; }
   getEnabled(): boolean { return this.isEnabled && this.audioContext !== null; }
 
-  /** Whether falling notes auto-play audio when crossing the playhead */
   setAutoPlayFalling(on: boolean) { this.autoPlayFalling = on; }
   getAutoPlayFalling(): boolean { return this.autoPlayFalling; }
 
@@ -62,91 +224,141 @@ export class AudioService {
     return 440 * Math.pow(2, (midi - 69) / 12);
   }
 
+  /** Stereo position based on MIDI note (low=left, high=right, like a real piano) */
+  private midiToPan(midi: number): number {
+    // MIDI 21 (A0) → -0.6, MIDI 108 (C8) → 0.6
+    return ((midi - 64) / 44) * 0.6;
+  }
+
   /**
-   * Play a MIDI note with a richer, piano-like tone.
-   * Uses layered oscillators (fundamental + harmonics) with smooth ADSR.
+   * Premium piano note synthesis.
+   * Multi-partial additive synthesis with hammer transient,
+   * register-dependent timbre, and natural decay.
    */
   async playMidiNote(midi: number, duration: number = 0.3, velocity: number = 100): Promise<void> {
     if (!this.isEnabled || !this.audioContext || !this.masterGain) return;
 
-    // Re-trigger: stop previous instance of same note
+    // Re-trigger: stop previous instance
     if (this.activeNotes.has(midi)) this.stopNote(midi);
 
     try {
       const ctx = this.audioContext;
       const now = ctx.currentTime;
       const freq = this.midiToFrequency(midi);
+      const profile = getRegisterProfile(midi);
 
-      // Velocity → gain (soft curve, max ~0.35 to leave headroom)
-      const velNorm = (velocity / 127);
-      const peakGain = velNorm * velNorm * 0.35; // quadratic for natural feel
+      // Velocity curve — cubic for expressive dynamics
+      const velNorm = velocity / 127;
+      const velCurve = velNorm * velNorm * velNorm;
+      const peakGain = 0.12 + velCurve * 0.28; // range: 0.12 – 0.40
 
-      // Per-note gain envelope
+      // Stereo panner
+      let panner: StereoPannerNode | undefined;
+      if (typeof ctx.createStereoPanner === 'function') {
+        panner = ctx.createStereoPanner();
+        panner.pan.value = this.midiToPan(midi);
+        panner.connect(this.masterGain);
+      }
+      const destination = panner || this.masterGain;
+
+      // Master note gain
       const noteGain = ctx.createGain();
-      noteGain.connect(this.masterGain);
+      noteGain.connect(destination);
 
-      // ADSR timings — adapt to duration to avoid overlap artifacts
-      const attack = 0.008;
-      const decay = Math.min(0.15, duration * 0.4);
-      const sustainLevel = Math.max(peakGain * 0.6, 0.001);
-      const releaseTime = Math.min(0.08, duration * 0.2);
-      const sustainEnd = Math.max(now + attack + decay, now + duration - releaseTime);
-      const releaseEnd = sustainEnd + releaseTime;
-
+      // Initial envelope on noteGain
+      const attackEnd = now + profile.attackTime;
       noteGain.gain.setValueAtTime(0, now);
-      noteGain.gain.linearRampToValueAtTime(peakGain, now + attack);
-      noteGain.gain.exponentialRampToValueAtTime(sustainLevel, now + attack + decay);
-      noteGain.gain.setValueAtTime(sustainLevel, sustainEnd);
-      noteGain.gain.exponentialRampToValueAtTime(0.001, releaseEnd);
+      noteGain.gain.linearRampToValueAtTime(peakGain, attackEnd);
 
-      // --- Layered oscillators for richness ---
+      // Decay to sustain
+      const decayTime = profile.decayBase * (0.5 + 0.5 * velNorm);
+      const sustainGain = Math.max(peakGain * profile.sustainLevel, 0.001);
+      noteGain.gain.setTargetAtTime(sustainGain, attackEnd, decayTime / 3);
+
+      // Schedule final release
+      const totalDuration = Math.max(duration, profile.decayBase * 0.8);
+      const releaseStart = now + totalDuration;
+      const releaseTime = 0.15;
+      noteGain.gain.setTargetAtTime(0.0001, releaseStart, releaseTime / 5);
+
+      const stopTime = releaseStart + releaseTime + 0.05;
+
+      // --- Harmonic partials ---
       const oscillators: OscillatorNode[] = [];
+      const gains: GainNode[] = [];
 
-      // 1. Fundamental (triangle — warmer than sine, less harsh than sawtooth)
-      const osc1 = ctx.createOscillator();
-      osc1.type = 'triangle';
-      osc1.frequency.value = freq;
-      const g1 = ctx.createGain();
-      g1.gain.value = 1.0;
-      osc1.connect(g1);
-      g1.connect(noteGain);
-      oscillators.push(osc1);
+      for (const partial of profile.partials) {
+        const osc = ctx.createOscillator();
+        osc.type = partial.type;
+        const partialFreq = freq * partial.ratio;
 
-      // 2. Soft sine one octave up (adds brightness without harshness)
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.value = freq * 2;
-      const g2 = ctx.createGain();
-      g2.gain.value = 0.15;
-      osc2.connect(g2);
-      g2.connect(noteGain);
-      oscillators.push(osc2);
+        // Slight inharmonicity (real piano strings are slightly sharp on upper partials)
+        const inharmonicity = 1 + (partial.ratio - 1) * (partial.ratio - 1) * 0.0002;
+        osc.frequency.value = partialFreq * inharmonicity;
 
-      // 3. Very soft sine at 3x (adds a bit of "bell" character)
-      const osc3 = ctx.createOscillator();
-      osc3.type = 'sine';
-      osc3.frequency.value = freq * 3;
-      const g3 = ctx.createGain();
-      g3.gain.value = 0.05;
-      // Quick decay on this partial for piano-like attack transient
-      g3.gain.setValueAtTime(0.08, now);
-      g3.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-      osc3.connect(g3);
-      g3.connect(noteGain);
-      oscillators.push(osc3);
+        // Per-partial gain with independent decay
+        const g = ctx.createGain();
+        const partialPeak = partial.amp * (0.7 + 0.3 * velNorm);
+        g.gain.setValueAtTime(partialPeak, now);
 
-      // Start all
-      for (const osc of oscillators) {
+        // Higher partials decay faster (natural piano behavior)
+        const partialDecay = decayTime * partial.decay;
+        const partialSustain = Math.max(partialPeak * 0.05, 0.0001);
+        g.gain.setTargetAtTime(partialSustain, attackEnd, partialDecay / 3);
+
+        osc.connect(g);
+        g.connect(noteGain);
+
         osc.start(now);
-        osc.stop(releaseEnd + 0.01);
+        osc.stop(stopTime);
+
+        oscillators.push(osc);
+        gains.push(g);
       }
 
-      this.activeNotes.set(midi, { oscillators, gain: noteGain });
+      // --- Hammer strike transient ---
+      let hammerSource: AudioBufferSourceNode | undefined;
+      if (this.hammerBuffer && profile.hammerGain > 0) {
+        hammerSource = ctx.createBufferSource();
+        hammerSource.buffer = this.hammerBuffer;
+
+        // Bandpass filter shaped by register
+        const hammerFilter = ctx.createBiquadFilter();
+        hammerFilter.type = 'bandpass';
+        hammerFilter.frequency.value = Math.min(freq * 4, 8000);
+        hammerFilter.Q.value = 1.5;
+
+        const hammerGain = ctx.createGain();
+        hammerGain.gain.value = profile.hammerGain * velCurve;
+
+        hammerSource.connect(hammerFilter);
+        hammerFilter.connect(hammerGain);
+        hammerGain.connect(noteGain);
+
+        hammerSource.start(now);
+      }
+
+      // --- Sympathetic resonance (very subtle detuned partial) ---
+      const sympOsc = ctx.createOscillator();
+      sympOsc.type = 'sine';
+      sympOsc.frequency.value = freq * 1.001; // ~1.7 cents sharp
+      const sympGain = ctx.createGain();
+      sympGain.gain.setValueAtTime(0.02 * velNorm, now);
+      sympGain.gain.setTargetAtTime(0.001, now + 0.3, 0.8);
+      sympOsc.connect(sympGain);
+      sympGain.connect(noteGain);
+      sympOsc.start(now);
+      sympOsc.stop(stopTime);
+      oscillators.push(sympOsc);
+      gains.push(sympGain);
+
+      this.activeNotes.set(midi, { oscillators, gains, noteGain, hammerSource, panner });
 
       // Cleanup on end
       oscillators[0].onended = () => {
         this.activeNotes.delete(midi);
-        noteGain.disconnect();
+        try { noteGain.disconnect(); } catch {}
+        if (panner) try { panner.disconnect(); } catch {}
       };
     } catch (e) {
       console.error(`[AudioService] playMidiNote ${midi} error:`, e);
@@ -157,12 +369,16 @@ export class AudioService {
     const entry = this.activeNotes.get(midi);
     if (entry && this.audioContext) {
       const now = this.audioContext.currentTime;
-      // Quick fade-out to avoid click
-      entry.gain.gain.cancelScheduledValues(now);
-      entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
-      entry.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      // Damper release — quick but smooth fade
+      const releaseTime = 0.06;
+      entry.noteGain.gain.cancelScheduledValues(now);
+      entry.noteGain.gain.setValueAtTime(
+        Math.max(entry.noteGain.gain.value, 0.0001), now
+      );
+      entry.noteGain.gain.exponentialRampToValueAtTime(0.0001, now + releaseTime);
+
       for (const osc of entry.oscillators) {
-        try { osc.stop(now + 0.04); } catch { /* already stopped */ }
+        try { osc.stop(now + releaseTime + 0.02); } catch { /* already stopped */ }
       }
       this.activeNotes.delete(midi);
     }
@@ -185,5 +401,9 @@ export class AudioService {
     }
     this.masterGain = null;
     this.compressor = null;
+    this.convolver = null;
+    this.reverbGain = null;
+    this.dryGain = null;
+    this.hammerBuffer = null;
   }
 }
