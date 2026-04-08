@@ -276,6 +276,15 @@ describe('Anti-regression: Guard matrix', () => {
 // ============================================================
 
 describe('Anti-regression: Runtime flag toggle', () => {
+  const syncEngineStepQuality = (
+    engine: LessonEngineApi,
+    flagSnapshot: FeatureFlags,
+    schemaVersion: 1 | 2
+  ) => {
+    if (schemaVersion !== 2) return;
+    engine.setUseStepQuality(!!flagSnapshot.useStepQualityStreak);
+  };
+
   it('enabling flags after boot makes feedback work', () => {
     vi.useFakeTimers();
     const badgeEl = document.createElement('div');
@@ -285,14 +294,12 @@ describe('Anti-regression: Runtime flag toggle', () => {
 
     const engine = createEngineV2();
 
-    // Simulate boot with flags OFF
-    let flagSnapshot: FeatureFlags = { ...DEFAULT_FLAGS };
     const ctx: WiringContext = {
       engine,
       badge: new StepQualityBadgeController(badgeEl),
       feedback: new NoteFeedbackController(feedbackEl),
       chordFx: new ChordClosureEffect(stepEl),
-      flagSnapshot,
+      flagSnapshot: { ...DEFAULT_FLAGS },
       schemaVersion: 2,
       mode: 'WAIT',
     };
@@ -303,20 +310,62 @@ describe('Anti-regression: Runtime flag toggle', () => {
       { notes: [64], start_beat: 2 },
     ]));
 
-    // First note with flags OFF → no feedback
     simulateMidiInput(ctx, 60);
     expect(badgeEl.hidden).toBe(true);
 
-    // Simulate runtime flag change (like window.__flags.set())
     ctx.flagSnapshot = {
       ...DEFAULT_FLAGS,
       showStepQualityFeedback: true,
       useStepQualityStreak: true,
     };
-    engine.setUseStepQuality(true);
+    syncEngineStepQuality(ctx.engine, ctx.flagSnapshot, ctx.schemaVersion);
 
-    // Second note with flags ON → feedback appears
     simulateMidiInput(ctx, 62);
+    expect(badgeEl.hidden).toBe(false);
+    expect(badgeEl.textContent).toBe('Perfeito');
+
+    vi.useRealTimers();
+  });
+
+  it('turning on only Quality Streak at runtime updates the live engine for subsequent steps', () => {
+    vi.useFakeTimers();
+    const badgeEl = document.createElement('div');
+    badgeEl.hidden = true;
+    const feedbackEl = document.createElement('div');
+    const stepEl = document.createElement('div');
+    const engine = createEngineV2();
+
+    const ctx: WiringContext = {
+      engine,
+      badge: new StepQualityBadgeController(badgeEl),
+      feedback: new NoteFeedbackController(feedbackEl),
+      chordFx: new ChordClosureEffect(stepEl),
+      flagSnapshot: {
+        ...DEFAULT_FLAGS,
+        showStepQualityFeedback: true,
+        useStepQualityStreak: false,
+      },
+      schemaVersion: 2,
+      mode: 'WAIT',
+    };
+
+    engine.loadLesson(makeV2Lesson([
+      { notes: [60], start_beat: 0 },
+      { notes: [62], start_beat: 1 },
+    ]));
+
+    simulateMidiInput(ctx, 60);
+    expect(badgeEl.hidden).toBe(true);
+    expect(engine.getStepQualities()).toEqual([]);
+
+    ctx.flagSnapshot = {
+      ...ctx.flagSnapshot,
+      useStepQualityStreak: true,
+    };
+    syncEngineStepQuality(ctx.engine, ctx.flagSnapshot, ctx.schemaVersion);
+
+    simulateMidiInput(ctx, 62);
+    expect(engine.getStepQualities()).toEqual(['PERFECT']);
     expect(badgeEl.hidden).toBe(false);
     expect(badgeEl.textContent).toBe('Perfeito');
 

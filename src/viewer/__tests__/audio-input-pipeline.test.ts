@@ -126,7 +126,6 @@ describe('Input pipeline convergence', () => {
     let mouseInputEnabled = false;
     const handler = vi.fn();
 
-    // Simulates piano-roll-controller playNote logic
     const playNote = (midi: number) => {
       if (mouseInputEnabled && handler) {
         handler(midi, 100, 'mouse');
@@ -156,6 +155,70 @@ describe('Input pipeline convergence', () => {
     debugKeyboardEnabled = true;
     handleKeyDown(60);
     expect(handler).toHaveBeenCalledWith(60, 96, 'keyboard');
+  });
+
+  it('same keyboard key can play again after keyup clears the pressed state', () => {
+    const pressedKeyboardKeys = new Set<string>();
+    const handler = vi.fn();
+    const KEY_TO_MIDI: Record<string, number> = { d: 64 };
+
+    const handleKeyDown = (key: string) => {
+      const midi = KEY_TO_MIDI[key];
+      if (!midi) return;
+      if (pressedKeyboardKeys.has(key)) return;
+      pressedKeyboardKeys.add(key);
+      handler(midi, 96, 'keyboard');
+    };
+
+    const handleKeyUp = (key: string) => {
+      if (!pressedKeyboardKeys.has(key)) return;
+      const midi = KEY_TO_MIDI[key];
+      if (midi) handler(midi, 0, 'keyboard');
+      pressedKeyboardKeys.delete(key);
+    };
+
+    handleKeyDown('d');
+    handleKeyUp('d');
+    handleKeyDown('d');
+
+    expect(handler.mock.calls).toEqual([
+      [64, 96, 'keyboard'],
+      [64, 0, 'keyboard'],
+      [64, 96, 'keyboard'],
+    ]);
+  });
+
+  it('releases stuck keyboard keys on blur/visibility cleanup so D can play again', () => {
+    const pressedKeyboardKeys = new Set<string>();
+    const handler = vi.fn();
+    const KEY_TO_MIDI: Record<string, number> = { d: 64 };
+
+    const handleKeyDown = (key: string) => {
+      const midi = KEY_TO_MIDI[key];
+      if (!midi) return;
+      if (pressedKeyboardKeys.has(key)) return;
+      pressedKeyboardKeys.add(key);
+      handler(midi, 96, 'keyboard');
+    };
+
+    const releasePressedKeyboardKeys = () => {
+      pressedKeyboardKeys.forEach((key) => {
+        const midi = KEY_TO_MIDI[key];
+        if (midi) handler(midi, 0, 'keyboard');
+      });
+      pressedKeyboardKeys.clear();
+    };
+
+    handleKeyDown('d');
+    handleKeyDown('d');
+    releasePressedKeyboardKeys();
+    handleKeyDown('d');
+
+    expect(handler.mock.calls).toEqual([
+      [64, 96, 'keyboard'],
+      [64, 0, 'keyboard'],
+      [64, 96, 'keyboard'],
+    ]);
   });
 });
 
