@@ -758,6 +758,16 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                       ) : (
                         <div className="text-[10px] text-slate-600 font-bold uppercase">Nenhuma nota crítica.</div>
                       )}
+
+                      {chapter.recommendation?.label ? (
+                        <div className="mt-4 pt-4 border-t border-white/5">
+                          <div className="text-[9px] font-black text-slate-600 uppercase mb-2 tracking-widest">Recomendação</div>
+                          <div className="text-sm text-cyan-300 font-bold">{chapter.recommendation.label}</div>
+                          {chapter.recommendation.reason ? (
+                            <div className="text-[10px] text-slate-500 mt-1">{chapter.recommendation.reason}</div>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </Card>
                   );
                 })}
