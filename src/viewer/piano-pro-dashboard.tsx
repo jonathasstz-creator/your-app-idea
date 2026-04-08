@@ -12,7 +12,6 @@ import {
   BarChart2,
   BookOpen,
   ArrowRight,
-  Clock,
   Award,
 } from "lucide-react";
 import type {
@@ -270,11 +269,11 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
   const [focusView, setFocusView] = useState<null | { type: "heatmap" | "sessions"; title: string }>(null);
 
   const statusConfig = {
-    live: { label: "MISSION LIVE", pill: "live" as const },
-    stale: { label: "LOCAL DATA", pill: "stale" as const },
-    loading: { label: "SYNCING...", pill: "loading" as const },
-    error: { label: "COMMS ERROR", pill: "error" as const },
-    idle: { label: "STANDBY", pill: "stale" as const },
+    live: { label: "AO VIVO", pill: "live" as const },
+    stale: { label: "DADOS LOCAIS", pill: "stale" as const },
+    loading: { label: "ATUALIZANDO...", pill: "loading" as const },
+    error: { label: "SEM CONEXÃO", pill: "error" as const },
+    idle: { label: "AGUARDANDO", pill: "stale" as const },
   }[status];
 
   if (!stats) {
@@ -282,7 +281,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
       <div className="flex flex-col w-full h-full min-h-0 items-center justify-center p-8 text-center">
         <Activity className="text-cyan-500 animate-pulse" size={48} />
         <p className="mt-4 text-slate-500 font-black text-[10px] uppercase tracking-[0.3em]">
-          {status === "error" ? "Sem dados disponíveis" : "Carregando Command Center..."}
+          {status === "error" ? "Sem dados disponíveis" : "Carregando seu progresso..."}
         </p>
         {error ? <p className="text-[10px] text-rose-400 mt-3 break-words max-w-md">{error}</p> : null}
       </div>
@@ -334,7 +333,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
             </div>
             <div>
               <h2 className="text-sm font-black text-white uppercase tracking-[0.4em]">
-                COMMAND ANALYTICS <span className="text-slate-600 font-mono text-xs">v2.5</span>
+                MEU PROGRESSO
               </h2>
               <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                 {rangeFrom} — {rangeTo}
@@ -348,9 +347,9 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
           <div className="flex items-center gap-4">
             <nav className="flex bg-slate-900/40 p-1.5 rounded-2xl border border-white/5">
               {[
-                { id: "overview", label: "BRIEFING", icon: Layout },
-                { id: "performance", label: "TÉCNICO", icon: Zap },
-                { id: "curriculum", label: "PROGRESSO", icon: BookOpen },
+                { id: "overview", label: "VISÃO GERAL", icon: Layout },
+                { id: "performance", label: "DESEMPENHO", icon: Zap },
+                { id: "curriculum", label: "LIÇÕES", icon: BookOpen },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -367,9 +366,6 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
             </nav>
             <div className="hidden sm:flex flex-col items-end">
               <Pill tone={statusConfig.pill}>{statusConfig.label}</Pill>
-              <div className="text-[8px] text-slate-700 font-black mt-1 uppercase tracking-widest">
-                TRANSMISSÃO ORBITAL
-              </div>
             </div>
           </div>
         </div>
@@ -386,7 +382,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                 exit={{ opacity: 0, scale: 0.98 }}
                 className="grid grid-cols-1 lg:grid-cols-12 gap-8"
               >
-                <Card title="Sumário de Operações" icon={<Target size={14} />} glow className="lg:col-span-8">
+                <Card title="Resumo da Prática" icon={<Target size={14} />} glow className="lg:col-span-8">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-12 py-4">
                     <Stat
                       label="Sessões (30d)"
@@ -401,31 +397,31 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                     />
                     <Stat
                       label="Latência Média"
-                      value={isFiniteNumber(kpis?.latency_avg) ? `${fmt0(kpis?.latency_avg)}ms` : "—"}
+                      value={isFiniteNumber(kpis?.latency_avg) ? `${(kpis!.latency_avg / 1000).toFixed(2)}s` : "—"}
                       color="text-pink-500"
                       sub="Tempo de Reação"
                     />
                     <Stat
                       label="Streak Atual"
                       value={isFiniteNumber(kpis?.best_streak) ? `${fmt0(kpis?.best_streak)}x` : "—"}
-                      sub="Consistência Neural"
+                      sub="Melhor sequência"
                     />
                     <Stat
                       label="Tempo Total"
                       value={formatDuration(safeNum(kpis?.practice_time_7d_sec, 0))}
-                      sub="Treino Líquido"
+                      sub="Últimos 7 dias"
                     />
                     <Stat
                       label="Best Score"
                       value={isFiniteNumber(kpis?.best_score) ? fmt1(kpis?.best_score) : "—"}
                       color="text-amber-400"
-                      sub="Performance Peak"
+                      sub="Melhor pontuação"
                     />
                   </div>
                 </Card>
 
                 <div className="lg:col-span-4 flex flex-col gap-8">
-                  <Card title="AI Intelligence" icon={<Brain size={14} />} className="flex-1">
+                  <Card title="Dica do Professor" icon={<Brain size={14} />} className="flex-1">
                     <SuggestionCard suggestion={suggestion} />
                   </Card>
                   <Card title="Tendência Semanal" icon={<TrendingUp size={14} />}>
@@ -450,7 +446,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                 </div>
 
                 <CollapsibleSection
-                  title="Frequência de Engajamento"
+                  title="Evolução Semanal"
                   icon={<History size={14} />}
                   defaultOpen
                   className="lg:col-span-12"
@@ -493,13 +489,10 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                       </div>
                       <div className="flex items-center gap-3 bg-slate-900/60 p-3 rounded-2xl border border-white/5">
                         <div className="w-3 h-3 rounded-full bg-pink-500 shadow-[0_0_10px_#ec4899]" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Performance Score
-                        </span>
-                      </div>
-                      <div className="p-4 border-l-2 border-emerald-500/30 bg-emerald-500/5 text-[10px] font-bold text-emerald-400/80 uppercase leading-relaxed tracking-wider">
-                        SISTEMA OPERANDO EM CAPACIDADE OTIMIZADA. TENDÊNCIA DE CRESCIMENTO DE 14% NA PRECISÃO DE SALTO.
-                      </div>
+                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                           Pontuação Média
+                         </span>
+                       </div>
                     </div>
                   </div>
                 </CollapsibleSection>
@@ -515,7 +508,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                 className="grid grid-cols-1 lg:grid-cols-2 gap-8"
               >
                 <CollapsibleSection
-                  title="Mapa Neural de Precisão (Preview)"
+                  title="Mapa de Precisão por Nota"
                   icon={<Zap size={14} />}
                   defaultOpen
                   action={
@@ -531,8 +524,8 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <div className="text-[10px] font-black text-slate-500 uppercase mb-3 tracking-widest">
-                        Top notas críticas
+                       <div className="text-[10px] font-black text-slate-500 uppercase mb-3 tracking-widest">
+                         Notas com mais erros
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {globalHeatmapTop.slice(0, 6).map((note) => (
@@ -560,7 +553,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                   </div>
                 </CollapsibleSection>
 
-                <Card title="Detecção de Instabilidade" icon={<Brain size={14} />}>
+                <Card title="Diagnóstico de Erros" icon={<Brain size={14} />}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
                     <div className="min-h-0">
                       <h4 className="text-[10px] font-black text-slate-500 uppercase mb-6 tracking-widest border-b border-white/5 pb-2">
@@ -659,21 +652,14 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                               </div>
                             </td>
                             <td className="px-4 py-4 text-xs font-black text-white">
-                              {isFiniteNumber(session.latency_avg_ms) ? `${fmt0(session.latency_avg_ms)}ms` : "—"}
+                              {isFiniteNumber(session.latency_avg_ms) ? `${(session.latency_avg_ms / 1000).toFixed(2)}s` : "—"}
                             </td>
                             <td className="px-4 py-4 text-xs font-black text-cyan-300">
                               {isFiniteNumber(session.duration_sec) && session.duration_sec > 0
                                 ? formatDuration(session.duration_sec)
                                 : "—"}
                             </td>
-                            <td className="px-4 py-4 text-right last:rounded-r-2xl border-r border-cyan-500/20">
-                              <button
-                                type="button"
-                                className="text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:text-white transition-colors"
-                              >
-                                Sincronizar
-                              </button>
-                            </td>
+                            <td className="px-4 py-4 text-right last:rounded-r-2xl border-r border-cyan-500/20" />
                           </tr>
                         ))}
                         {!recentSessions.length ? (
@@ -709,13 +695,13 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                       className={!chapter.unlocked ? "opacity-50 pointer-events-none" : ""}
                       right={
                         <div className="text-[10px] font-black text-cyan-400 tracking-widest">
-                          {chapter.unlocked ? "SISTEMA ATIVO" : "BLOQUEADO"}
+                          {chapter.unlocked ? "DESBLOQUEADO" : "BLOQUEADO"}
                         </div>
                       }
                     >
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <div className="text-[9px] text-slate-500 uppercase font-black mb-1">Domínio Acadêmico</div>
+                          <div className="text-[9px] text-slate-500 uppercase font-black mb-1">Progresso</div>
                           <div className="text-4xl font-black text-white tracking-tighter">{fmt0(progress)}%</div>
                         </div>
                         <div className="w-12 h-12 bg-slate-900 rounded-2xl border border-white/5 flex items-center justify-center text-cyan-400/50">
@@ -756,7 +742,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                       {notes.length ? (
                         <div className="pt-6 border-t border-white/5">
                           <div className="text-[9px] font-black text-slate-600 uppercase mb-4 tracking-widest flex items-center gap-2">
-                            <Target size={12} /> Notas Mais Instáveis
+                           <Target size={12} /> Notas com mais erros
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {notes.slice(0, 4).map((note) => (
@@ -786,23 +772,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
         </div>
       </main>
 
-      <footer className="h-10 shrink-0 bg-[#05060f] border-t border-white/5 flex items-center justify-between px-10 pointer-events-none">
-        <div className="text-[9px] font-black text-slate-700 uppercase tracking-[0.5em] flex items-center gap-6">
-          <span>ENGENHO DE ANÁLISE ATIVO</span>
-          <span className="w-1.5 h-1.5 bg-cyan-500/20 rounded-full" />
-          <span>SISTEMA DE PRECISÃO REDE GEMINI</span>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Clock size={10} className="text-slate-800" />
-            <span className="text-[9px] font-black text-slate-800 uppercase tracking-widest">REAL-TIME SYNC</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Award size={10} className="text-slate-800" />
-            <span className="text-[9px] font-black text-slate-800 uppercase tracking-widest">MASTER LVL 12</span>
-          </div>
-        </div>
-      </footer>
+      {/* Footer removido — sem valor informacional */}
 
       <FocusPanel
         open={!!focusView}
@@ -892,16 +862,9 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, status, lastUpdated, error
                       </div>
                     </td>
                     <td className="px-4 py-4 text-xs font-black text-white">
-                      {isFiniteNumber(session.latency_avg_ms) ? `${fmt0(session.latency_avg_ms)}ms` : "—"}
+                      {isFiniteNumber(session.latency_avg_ms) ? `${(session.latency_avg_ms / 1000).toFixed(2)}s` : "—"}
                     </td>
-                    <td className="px-4 py-4 text-right last:rounded-r-2xl border-r border-cyan-500/20">
-                      <button
-                        type="button"
-                        className="text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:text-white transition-colors"
-                      >
-                        Sincronizar
-                      </button>
-                    </td>
+                    <td className="px-4 py-4 text-right last:rounded-r-2xl border-r border-cyan-500/20" />
                   </tr>
                 ))}
                 {!recentSessions.length ? (
