@@ -394,7 +394,7 @@ featureFlags.init(remoteProvider?)
 3. **Respeitar a hierarquia de config:** `window.__APP_CONFIG__` → `/config.json` → `import.meta.env`. Nunca ler `import.meta.env` diretamente fora de `app-config.ts`.
 4. **Preferir mudanças mínimas.** O princípio do projeto é "adaptar o ambiente ao app, não o app ao ambiente."
 5. **Não renomear pastas/arquivos em `src/viewer/`.** A estrutura é preservada para portabilidade entre plataformas.
-6. **Testes obrigatórios** ao mudar `lesson-engine.ts`, `auth-storage.ts`, `analytics-client.ts`, `beat-to-x-mapping.ts`, `lesson-transposer.ts`, `catalog-service.ts`, `ui-service.ts`.
+6. **Testes obrigatórios** ao mudar `lesson-engine.ts`, `auth-storage.ts`, `analytics-client.ts`, `beat-to-x-mapping.ts`, `lesson-transposer.ts`, `catalog-service.ts`, `ui-service.ts`, `audio-service.ts`.
 7. **Nunca armazenar secrets em código.** Usar `public/config.json` para chaves públicas (anon key).
 8. **Imutabilidade:** `LessonTransposer.transpose()` retorna clone. Engine não muta input. Manter esse padrão.
 9. **Fire-and-forget:** POST `/v1/sessions/{id}/complete` nunca deve bloquear a UI. Falhas são logadas, não lançadas. Guard `completeSent` impede duplicidade.
@@ -596,10 +596,16 @@ Regras de handoff:
 - O cache de analytics é isolado por `sub` do JWT. Se o sub mudar, cache antigo é descartado.
 
 ### Feature flags
-- Flags atuais: `showSheetMusic`, `showFallingNotes`, `showNewCurriculum`, `showIntermediateCurriculum`, `useWebSocket`, `useStepQualityStreak`, `showStepQualityFeedback`.
+- Flags atuais: `showSheetMusic`, `showFallingNotes`, `showNewCurriculum`, `showIntermediateCurriculum`, `useWebSocket`, `useStepQualityStreak`, `showStepQualityFeedback`, `enableGuestMode`.
 - Precedência: `DEFAULT_FLAGS` → localStorage (`viewer:featureFlags:v1`) → remote provider → runtime (`window.__flags.set(...)`).
 - `featureFlagSnapshot` em `index.tsx` é mantido atualizado via `featureFlags.subscribe()`. Mudanças em runtime refletem imediatamente no handler MIDI.
 - Podem ser alteradas em runtime via `window.__flags.set(...)` (apenas em DEV).
+
+### Audio pipeline
+- `AudioService` (`src/viewer/audio-service.ts`) usa síntese layered (triangle + harmonics) com compressor dinâmico.
+- Áudio é tocado centralmente em `handleNoteInput()` — mouse, keyboard e MIDI convergem para o mesmo ponto.
+- `piano-roll-controller.ts` NÃO toca áudio diretamente (removido para evitar double-trigger).
+- Auto-play de falling notes controlado por `audioService.getAutoPlayFalling()` (OFF por padrão).
 
 ---
 
@@ -650,6 +656,8 @@ Regras de handoff:
 - ✅ **Bootstrap determinístico** (2026-04-08): boot shell (`app-booting`), guard de inicialização única, auth gate z-index, sem flicker de UI
 - ✅ **Boot state machine** (2026-04-08): `window.__appBoot__` como dono único do lifecycle, `failed → ready` bloqueado, config inválida em prod é fatal
 - ✅ **HUD UX fixes** (2026-04-08): score/streak sticky visibility, status terminal priority, Step Quality flag toggles no menu
+- ✅ **Audio pipeline unificado** (2026-04-08): síntese piano-like (layered oscillators + compressor), áudio centralizado em `handleNoteInput`, auto-play falling notes gated, 27 testes anti-regressão
+- ✅ **Input convergence** (2026-04-08): mouse, keyboard e MIDI alimentam o mesmo `handleNoteInput` → mesma pipeline de engine + áudio + Step Quality
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.
