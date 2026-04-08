@@ -1,202 +1,188 @@
 /**
  * Audio Service - Web Audio API for MIDI playback
- * MIDIano-style: Toca notas automaticamente quando falling notes chegam ao playhead
+ * Piano-like synthesis with layered oscillators and smooth ADSR envelope.
  */
 
 export class AudioService {
   private audioContext: AudioContext | null = null;
-  private gainNode: GainNode | null = null;
-  private activeOscillators: Map<number, OscillatorNode> = new Map();
+  private masterGain: GainNode | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
+  private activeNotes: Map<number, { oscillators: OscillatorNode[]; gain: GainNode }> = new Map();
   private isEnabled: boolean = false;
-  private volume: number = 0.3; // Volume padrão (0.0 a 1.0)
+  private volume: number = 0.3;
+  private autoPlayFalling: boolean = false; // OFF by default — user must opt in
 
-  constructor() {
-    // Inicializar AudioContext apenas quando necessário (user interaction)
-    // Web Audio API requer user interaction para criar AudioContext
-  }
-
-  /**
-   * Inicializa o AudioContext (deve ser chamado após user interaction).
-   */
   async initialize(): Promise<boolean> {
-    if (this.audioContext) {
-      return true; // Já inicializado
-    }
-
+    if (this.audioContext) return true;
     try {
-      // Usar AudioContext ou webkitAudioContext (Safari)
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) {
-        console.warn("[AudioService] Web Audio API não suportado");
-        return false;
-      }
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctx) { console.warn("[AudioService] Web Audio API not supported"); return false; }
 
-      this.audioContext = new AudioContextClass();
-      
-      // Criar gain node para controle de volume
-      this.gainNode = this.audioContext.createGain();
-      this.gainNode.connect(this.audioContext.destination);
-      this.gainNode.gain.value = this.volume;
+      this.audioContext = new Ctx();
 
-      console.log("[AudioService] Inicializado com sucesso");
+      // Compressor to prevent clipping / harshness
+      this.compressor = this.audioContext.createDynamicsCompressor();
+      this.compressor.threshold.value = -24;
+      this.compressor.knee.value = 12;
+      this.compressor.ratio.value = 4;
+      this.compressor.attack.value = 0.003;
+      this.compressor.release.value = 0.15;
+      this.compressor.connect(this.audioContext.destination);
+
+      this.masterGain = this.audioContext.createGain();
+      this.masterGain.gain.value = this.volume;
+      this.masterGain.connect(this.compressor);
+
+      console.log("[AudioService] Initialized");
       return true;
-    } catch (error) {
-      console.error("[AudioService] Erro ao inicializar:", error);
+    } catch (e) {
+      console.error("[AudioService] Init error:", e);
       return false;
     }
   }
 
-  /**
-   * Ativa ou desativa o playback de áudio.
-   */
   setEnabled(enabled: boolean) {
     this.isEnabled = enabled;
-    
-    // Se desabilitar, parar todos os osciladores ativos
-    if (!enabled) {
-      this.stopAllNotes();
-    }
+    if (!enabled) this.stopAllNotes();
   }
 
-  /**
-   * Define o volume (0.0 a 1.0).
-   */
-  setVolume(volume: number) {
-    this.volume = Math.max(0.0, Math.min(1.0, volume));
-    if (this.gainNode) {
-      this.gainNode.gain.value = this.volume;
-    }
+  setVolume(v: number) {
+    this.volume = Math.max(0, Math.min(1, v));
+    if (this.masterGain) this.masterGain.gain.value = this.volume;
   }
 
-  /**
-   * Retorna o volume atual.
-   */
-  getVolume(): number {
-    return this.volume;
-  }
+  getVolume(): number { return this.volume; }
+  getEnabled(): boolean { return this.isEnabled && this.audioContext !== null; }
 
-  /**
-   * Verifica se o áudio está habilitado.
-   */
-  getEnabled(): boolean {
-    return this.isEnabled && this.audioContext !== null;
-  }
+  /** Whether falling notes auto-play audio when crossing the playhead */
+  setAutoPlayFalling(on: boolean) { this.autoPlayFalling = on; }
+  getAutoPlayFalling(): boolean { return this.autoPlayFalling; }
 
-  /**
-   * Converte MIDI note para frequência (Hz).
-   * Fórmula: frequency = 440 * 2^((midi-69)/12)
-   * MIDI note 69 = A4 = 440 Hz
-   */
   private midiToFrequency(midi: number): number {
     return 440 * Math.pow(2, (midi - 69) / 12);
   }
 
   /**
-   * Toca uma nota MIDI.
-   * @param midi MIDI note number (0-127)
-   * @param duration Duração em segundos (opcional, default 0.2s)
-   * @param velocity Velocidade/volume da nota (0-127, opcional, default 100)
+   * Play a MIDI note with a richer, piano-like tone.
+   * Uses layered oscillators (fundamental + harmonics) with smooth ADSR.
    */
-  async playMidiNote(midi: number, duration: number = 0.2, velocity: number = 100): Promise<void> {
-    if (!this.isEnabled || !this.audioContext || !this.gainNode) {
-      return;
-    }
+  async playMidiNote(midi: number, duration: number = 0.3, velocity: number = 100): Promise<void> {
+    if (!this.isEnabled || !this.audioContext || !this.masterGain) return;
 
-    // Se já existe um oscilador para esta nota, parar antes de tocar novamente
-    if (this.activeOscillators.has(midi)) {
-      this.stopNote(midi);
-    }
+    // Re-trigger: stop previous instance of same note
+    if (this.activeNotes.has(midi)) this.stopNote(midi);
 
     try {
-      // Criar oscilador (onda senoidal para som mais suave)
-      const oscillator = this.audioContext.createOscillator();
-      const noteGain = this.audioContext.createGain();
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
+      const freq = this.midiToFrequency(midi);
 
-      // Configurar frequência baseada no MIDI note
-      const frequency = this.midiToFrequency(midi);
-      oscillator.type = 'sine'; // Onda senoidal (som mais suave)
-      oscillator.frequency.value = frequency;
+      // Velocity → gain (soft curve, max ~0.35 to leave headroom)
+      const velNorm = (velocity / 127);
+      const peakGain = velNorm * velNorm * 0.35; // quadratic for natural feel
 
-      // Configurar envelope ADSR simples (Attack-Decay-Sustain-Release)
-      const now = this.audioContext.currentTime;
-      const attackTime = 0.01; // Attack rápido (10ms)
-      const releaseTime = 0.05; // Release rápido (50ms)
-      
-      // Normalizar velocity para gain (0-127 -> 0.0-1.0)
-      const velocityGain = (velocity / 127) * 0.5; // Máximo 50% para evitar clipping
-      
-      // Conexões: oscillator -> noteGain -> gainNode -> destination
-      oscillator.connect(noteGain);
-      noteGain.connect(this.gainNode);
+      // Per-note gain envelope
+      const noteGain = ctx.createGain();
+      noteGain.connect(this.masterGain);
 
-      // Envelope ADSR simples
+      // ADSR timings
+      const attack = 0.008;
+      const decay = 0.15;
+      const sustainLevel = peakGain * 0.6;
+      const releaseStart = Math.max(now + attack + decay, now + duration - 0.08);
+      const releaseEnd = releaseStart + 0.08;
+
       noteGain.gain.setValueAtTime(0, now);
-      noteGain.gain.linearRampToValueAtTime(velocityGain, now + attackTime); // Attack
-      noteGain.gain.setValueAtTime(velocityGain, now + duration - releaseTime); // Sustain
-      noteGain.gain.linearRampToValueAtTime(0, now + duration); // Release
+      noteGain.gain.linearRampToValueAtTime(peakGain, now + attack);
+      noteGain.gain.exponentialRampToValueAtTime(Math.max(sustainLevel, 0.001), now + attack + decay);
+      noteGain.gain.setValueAtTime(sustainLevel, releaseStart);
+      noteGain.gain.exponentialRampToValueAtTime(0.001, releaseEnd);
 
-      // Iniciar oscilador
-      oscillator.start(now);
-      
-      // Armazenar oscilador ativo
-      this.activeOscillators.set(midi, oscillator);
+      // --- Layered oscillators for richness ---
+      const oscillators: OscillatorNode[] = [];
 
-      // Parar e limpar após duração
-      oscillator.stop(now + duration);
-      oscillator.onended = () => {
-        this.activeOscillators.delete(midi);
+      // 1. Fundamental (triangle — warmer than sine, less harsh than sawtooth)
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'triangle';
+      osc1.frequency.value = freq;
+      const g1 = ctx.createGain();
+      g1.gain.value = 1.0;
+      osc1.connect(g1);
+      g1.connect(noteGain);
+      oscillators.push(osc1);
+
+      // 2. Soft sine one octave up (adds brightness without harshness)
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.value = freq * 2;
+      const g2 = ctx.createGain();
+      g2.gain.value = 0.15;
+      osc2.connect(g2);
+      g2.connect(noteGain);
+      oscillators.push(osc2);
+
+      // 3. Very soft sine at 3x (adds a bit of "bell" character)
+      const osc3 = ctx.createOscillator();
+      osc3.type = 'sine';
+      osc3.frequency.value = freq * 3;
+      const g3 = ctx.createGain();
+      g3.gain.value = 0.05;
+      // Quick decay on this partial for piano-like attack transient
+      g3.gain.setValueAtTime(0.08, now);
+      g3.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      osc3.connect(g3);
+      g3.connect(noteGain);
+      oscillators.push(osc3);
+
+      // Start all
+      for (const osc of oscillators) {
+        osc.start(now);
+        osc.stop(releaseEnd + 0.01);
+      }
+
+      this.activeNotes.set(midi, { oscillators, gain: noteGain });
+
+      // Cleanup on end
+      oscillators[0].onended = () => {
+        this.activeNotes.delete(midi);
         noteGain.disconnect();
       };
-    } catch (error) {
-      console.error(`[AudioService] Erro ao tocar nota MIDI ${midi}:`, error);
+    } catch (e) {
+      console.error(`[AudioService] playMidiNote ${midi} error:`, e);
     }
   }
 
-  /**
-   * Para uma nota MIDI específica.
-   */
   stopNote(midi: number): void {
-    const oscillator = this.activeOscillators.get(midi);
-    if (oscillator && this.audioContext) {
-      try {
-        oscillator.stop(this.audioContext.currentTime);
-        this.activeOscillators.delete(midi);
-      } catch (error) {
-        // Oscilador já pode ter terminado
-        this.activeOscillators.delete(midi);
+    const entry = this.activeNotes.get(midi);
+    if (entry && this.audioContext) {
+      const now = this.audioContext.currentTime;
+      // Quick fade-out to avoid click
+      entry.gain.gain.cancelScheduledValues(now);
+      entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
+      entry.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      for (const osc of entry.oscillators) {
+        try { osc.stop(now + 0.04); } catch { /* already stopped */ }
       }
+      this.activeNotes.delete(midi);
     }
   }
 
-  /**
-   * Para todas as notas ativas.
-   */
   stopAllNotes(): void {
     if (!this.audioContext) return;
-    
-    const now = this.audioContext.currentTime;
-    for (const [midi, oscillator] of this.activeOscillators.entries()) {
-      try {
-        oscillator.stop(now);
-      } catch (error) {
-        // Ignorar erros (oscilador já pode ter terminado)
-      }
+    for (const [midi] of this.activeNotes) {
+      this.stopNote(midi);
     }
-    this.activeOscillators.clear();
+    this.activeNotes.clear();
   }
 
-  /**
-   * Limpa recursos (deve ser chamado ao destruir).
-   */
   dispose(): void {
     this.stopAllNotes();
     this.setEnabled(false);
-    
     if (this.audioContext) {
-      this.audioContext.close().catch(console.error);
+      this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
-    
-    this.gainNode = null;
+    this.masterGain = null;
+    this.compressor = null;
   }
 }
