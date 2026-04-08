@@ -1833,41 +1833,48 @@ const init = async () => {
             // Force render update immediately (includes cursor update)
             renderView(viewAfter);
 
-            // PR2: Step Quality visual feedback (WAIT mode, V2 only)
-            if (featureFlagSnapshot.showStepQualityFeedback && currentSchemaVersion === 2) {
-                console.debug('[StepQuality] feedback block entered', { step: viewBefore.currentStep, schemaV: currentSchemaVersion });
+            // PR2: Step Quality visual feedback (WAIT mode)
+            if (featureFlagSnapshot.showStepQualityFeedback) {
                 const stepAdvanced = viewAfter.currentStep > viewBefore.currentStep;
 
-                if (stepAdvanced) {
-                    // Step completed
-                    const chordSize = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
-                    chordHitCount = 0;
+                if (currentSchemaVersion === 2) {
+                    // V2: Full step quality with chords, quality badge, partial hits
+                    console.debug('[StepQuality] feedback block entered', { step: viewBefore.currentStep, schemaV: currentSchemaVersion });
 
-                    if (chordSize > 1) {
-                        chordClosure?.trigger();
+                    if (stepAdvanced) {
+                        const chordSize = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
+                        chordHitCount = 0;
+
+                        if (chordSize > 1) {
+                            chordClosure?.trigger();
+                            noteFeedbackCtrl?.showChordComplete();
+                        }
+
+                        // Quality badge (only when step quality tracking is active)
+                        if (featureFlagSnapshot.useStepQualityStreak) {
+                            const qualities = engine.getStepQualities();
+                            const lastQ = qualities[qualities.length - 1];
+                            if (lastQ) qualityBadge?.show(lastQ);
+                        }
+                    } else if (res?.result === 'HIT') {
+                        chordHitCount += 1;
+                        const chordTotal = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
+                        if (chordTotal > 1) {
+                            noteFeedbackCtrl?.showPartialHit(chordHitCount, chordTotal);
+                        }
+                    } else if (res?.result === 'MISS') {
+                        chordHitCount = 0;
+                        noteFeedbackCtrl?.showWrongNote();
+                    } else if (res?.result === 'NONE' && isOn) {
+                        noteFeedbackCtrl?.showDuplicate();
+                    }
+                } else {
+                    // V1: Basic note feedback (HIT → ✓, MISS → ✗)
+                    if (stepAdvanced || res?.result === 'HIT') {
                         noteFeedbackCtrl?.showChordComplete();
+                    } else if (res?.result === 'MISS') {
+                        noteFeedbackCtrl?.showWrongNote();
                     }
-
-                    // Quality badge (only when step quality tracking is active)
-                    if (featureFlagSnapshot.useStepQualityStreak) {
-                        const qualities = engine.getStepQualities();
-                        const lastQ = qualities[qualities.length - 1];
-                        if (lastQ) qualityBadge?.show(lastQ);
-                    }
-                } else if (res?.result === 'HIT') {
-                    // Partial chord hit
-                    chordHitCount += 1;
-                    const chordTotal = lessonSteps[viewBefore.currentStep]?.notes?.length ?? 1;
-                    if (chordTotal > 1) {
-                        noteFeedbackCtrl?.showPartialHit(chordHitCount, chordTotal);
-                    }
-                } else if (res?.result === 'MISS') {
-                    // Wrong note
-                    chordHitCount = 0;
-                    noteFeedbackCtrl?.showWrongNote();
-                } else if (res?.result === 'NONE' && isOn) {
-                    // Duplicate note
-                    noteFeedbackCtrl?.showDuplicate();
                 }
             }
         } else if (practiceMode === "FILM" && lastFilmSnapshot) {
