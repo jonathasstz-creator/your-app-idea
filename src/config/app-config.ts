@@ -1,25 +1,23 @@
 /**
  * Centralized Application Configuration
- * 
+ *
  * Resolution order (first non-empty wins):
  *   1. window.__APP_CONFIG__   — runtime injection (deploy-time, no rebuild)
  *   2. /config.json            — loaded async at boot (optional)
  *   3. import.meta.env.VITE_*  — build-time (Vite default, dev convenience)
- * 
+ *
  * This module is the SINGLE source of truth for all public frontend config.
  * Backend secrets (SERVICE_ROLE_KEY, JWT_SECRET, DB_URL) NEVER belong here.
- * 
+ *
  * To override at deploy time without rebuild:
  *   - Inject <script>window.__APP_CONFIG__ = { ... }</script> before app bundle
  *   - Or serve /config.json from your CDN/host
  */
 
-// ─── Types ───────────────────────────────────────────────────────
-
 export interface AppConfig {
-  /** Supabase project URL (public) */
+  /** External auth project URL (public) */
   supabaseUrl: string;
-  /** Supabase anon/publishable key (public) */
+  /** External auth project anon/publishable key (public) */
   supabaseAnonKey: string;
   /** Backend API base URL, e.g. https://api.example.com */
   apiBaseUrl: string;
@@ -29,17 +27,17 @@ export interface AppConfig {
   analyticsMode: string;
   /** Enable static fallback for analytics */
   enableStaticFallback: boolean;
+  /** Integrated backend proxy base URL used for edge functions */
+  proxyBaseUrl: string;
+  /** Integrated backend publishable key used for edge functions */
+  proxyAnonKey: string;
 }
-
-// ─── Runtime injection interface ─────────────────────────────────
 
 declare global {
   interface Window {
     __APP_CONFIG__?: Partial<Record<string, string>>;
   }
 }
-
-// ─── Resolution helpers ──────────────────────────────────────────
 
 function getMetaEnv(): Record<string, string | undefined> {
   try {
@@ -55,22 +53,17 @@ function resolve(
   viteKeys: string[],
   fallback: string = ''
 ): string {
-  // 1. Runtime injection
   const runtime = window.__APP_CONFIG__?.[runtimeKey];
   if (runtime) return runtime;
 
-  // 2. Vite env (supports multiple key names for compatibility)
   const env = getMetaEnv();
   for (const vk of viteKeys) {
     const val = env[vk];
     if (val) return val;
   }
 
-  // 3. Fallback
   return fallback;
 }
-
-// ─── Config singleton ────────────────────────────────────────────
 
 let _config: AppConfig | null = null;
 let _runtimeLoaded = false;
@@ -89,28 +82,40 @@ function isProduction(): boolean {
 }
 
 function buildConfig(): AppConfig {
+  const env = getMetaEnv();
+
   const rawApiBase = resolve('apiBaseUrl', 'apiBaseUrl', [
     'VITE_API_BASE_URL',
     'VITE_VIEWER_API_URL',
   ], '');
 
-  // In production, NEVER silently fall back to localhost
   let apiBaseUrl: string;
   if (rawApiBase && !isLocalhost(rawApiBase)) {
     apiBaseUrl = rawApiBase.replace(/\/$/, '');
   } else if (isProduction()) {
-    // Production without a valid public API URL — leave empty to trigger error
     apiBaseUrl = '';
     if (rawApiBase) {
       console.error('[config] ⚠️ apiBaseUrl aponta para localhost em produção — ignorado:', rawApiBase);
     }
   } else {
-    // Dev: allow localhost or empty (Vite proxy via relative paths)
     apiBaseUrl = rawApiBase ? rawApiBase.replace(/\/$/, '') : '';
   }
 
   const rawAnalytics = resolve('analyticsApiUrl', 'analyticsApiUrl', [
     'VITE_VIEWER_API_URL',
+  ]);
+
+  const derivedProxyBaseUrl = env.VITE_SUPABASE_PROJECT_ID
+    ? `https://${env.VITE_SUPABASE_PROJECT_ID}.supabase.co`
+    : '';
+
+  const proxyBaseUrl = resolve('proxyBaseUrl', 'proxyBaseUrl', [
+    'VITE_SUPABASE_URL',
+  ], derivedProxyBaseUrl).replace(/\/$/, '');
+
+  const proxyAnonKey = resolve('proxyAnonKey', 'proxyAnonKey', [
+    'VITE_SUPABASE_PUBLISHABLE_KEY',
+    'VITE_SUPABASE_ANON_KEY',
   ]);
 
   return {
@@ -129,13 +134,11 @@ function buildConfig(): AppConfig {
     enableStaticFallback: resolve('enableStaticFallback', 'enableStaticFallback', [
       'VITE_ENABLE_STATIC_FALLBACK',
     ], 'false') === 'true',
+    proxyBaseUrl,
+    proxyAnonKey,
   };
 }
 
-/**
- * Get current config (sync, uses build-time + window.__APP_CONFIG__).
- * Safe to call at module init time.
- */
 export function getConfig(): AppConfig {
   if (!_config) {
     _config = buildConfig();
@@ -143,11 +146,6 @@ export function getConfig(): AppConfig {
   return _config;
 }
 
-/**
- * Try to load /config.json at runtime. Call once during app bootstrap.
- * Merges runtime values over build-time values.
- * Fails silently — /config.json is optional.
- */
 export async function loadRuntimeConfig(): Promise<AppConfig> {
   if (!_runtimeLoaded) {
     _runtimeLoaded = true;
@@ -157,30 +155,24 @@ export async function loadRuntimeConfig(): Promise<AppConfig> {
         const json = await resp.json();
         if (json && typeof json === 'object') {
           window.__APP_CONFIG__ = { ...json, ...window.__APP_CONFIG__ };
-          _config = buildConfig(); // rebuild with new values
+          _config = buildConfig();
           if (isDev()) {
             console.log('[config] Runtime config loaded from /config.json');
           }
         }
       }
     } catch {
-      // /config.json is optional — no error needed
+      // /config.json is optional
     }
   }
   return getConfig();
 }
-
-// ─── Validation ──────────────────────────────────────────────────
 
 export interface ConfigValidation {
   valid: boolean;
   missing: string[];
 }
 
-/**
- * Validate that required config values are present.
- * Does NOT throw — caller decides how to handle.
- */
 export function validateConfig(config?: AppConfig): ConfigValidation {
   const c = config ?? getConfig();
   const missing: string[] = [];
@@ -191,8 +183,6 @@ export function validateConfig(config?: AppConfig): ConfigValidation {
   return { valid: missing.length === 0, missing };
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────
-
 export function isDev(): boolean {
   try {
     return (import.meta as any).env?.DEV === true;
@@ -201,20 +191,11 @@ export function isDev(): boolean {
   }
 }
 
-/**
- * Check if auth (Supabase) can be initialized.
- */
 export function isAuthConfigured(): boolean {
   const c = getConfig();
   return Boolean(c.supabaseUrl && c.supabaseAnonKey);
 }
 
-/**
- * Build a full API URL from a path.
- * In dev (no apiBaseUrl), returns relative path for Vite proxy.
- * In production, prepends the configured apiBaseUrl.
- * Throws if production and no apiBaseUrl configured.
- */
 export function buildApiUrl(path: string): string {
   const c = getConfig();
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
@@ -223,24 +204,35 @@ export function buildApiUrl(path: string): string {
     return `${c.apiBaseUrl}${cleanPath}`;
   }
 
-  // Dev: relative path works with Vite proxy
   if (isDev()) {
     return cleanPath;
   }
 
-  // Production without apiBaseUrl — critical misconfiguration
   console.error('[config] ❌ apiBaseUrl não configurada em produção. Requests de API falharão.');
-  return cleanPath; // still return to avoid crash, but log the error
+  return cleanPath;
 }
 
-/**
- * Get the API base URL. Throws descriptive error in production if missing.
- */
 export function getApiBaseUrl(): string {
   const c = getConfig();
   if (c.apiBaseUrl) return c.apiBaseUrl;
   if (isDev()) return '';
   throw new Error(
     'API base URL não configurada. Defina apiBaseUrl em /config.json, window.__APP_CONFIG__ ou VITE_API_BASE_URL.'
+  );
+}
+
+export function getProxyBaseUrl(config?: AppConfig): string {
+  const c = config ?? getConfig();
+  if (c.proxyBaseUrl) return c.proxyBaseUrl;
+  throw new Error(
+    'Proxy base URL não configurada. Defina proxyBaseUrl em /config.json ou VITE_SUPABASE_PROJECT_ID/VITE_SUPABASE_URL no build.'
+  );
+}
+
+export function getProxyAnonKey(config?: AppConfig): string {
+  const c = config ?? getConfig();
+  if (c.proxyAnonKey) return c.proxyAnonKey;
+  throw new Error(
+    'Proxy publishable key não configurada. Defina proxyAnonKey em /config.json ou VITE_SUPABASE_PUBLISHABLE_KEY no build.'
   );
 }
