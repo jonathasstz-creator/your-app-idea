@@ -71,7 +71,7 @@ describe('StepQualityBadgeController', () => {
     expect(el.hidden).toBe(false);
 
     // Advance past show duration (1200ms)
-    vi.advanceTimersByTime(600);
+    vi.advanceTimersByTime(1200);
     expect(el.classList.contains('quality-badge-exit')).toBe(true);
 
     // Advance past exit animation (300ms)
