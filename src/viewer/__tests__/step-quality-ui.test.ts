@@ -139,7 +139,7 @@ describe('NoteFeedbackController', () => {
     expect(el.textContent).toBe('✓ Certo');
     expect(el.classList.contains('is-chord-complete')).toBe(true);
 
-    vi.advanceTimersByTime(600);
+    vi.advanceTimersByTime(1200);
     expect(el.textContent).toBe('');
     expect(el.className).toBe('judge-feedback');
   });
@@ -149,7 +149,7 @@ describe('NoteFeedbackController', () => {
     expect(el.textContent).toBe('✗ Errado');
     expect(el.classList.contains('is-wrong-brief')).toBe(true);
 
-    vi.advanceTimersByTime(400);
+    vi.advanceTimersByTime(800);
     expect(el.textContent).toBe('');
   });
 
