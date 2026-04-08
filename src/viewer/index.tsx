@@ -2982,7 +2982,15 @@ const init = async () => {
     requestChapterCatalog();
 };
 
+let _startAppCalled = false;
+
 const startApp = async () => {
+    if (_startAppCalled) {
+        console.warn('[BOOT] startApp already called, skipping duplicate.');
+        return;
+    }
+    _startAppCalled = true;
+
     // Auth-first render gating: NO internal UI is shown until auth resolves.
     // - authenticated → init app normally
     // - unauthenticated → login overlay blocks until user logs in → then init
@@ -3005,6 +3013,9 @@ const startApp = async () => {
         const message = err instanceof Error ? err.message : String(err);
         alert(`Falha ao inicializar aplicação: ${message}`);
     }
+
+    // Remove boot shell — app is ready
+    document.body.classList.remove('app-booting');
 };
 
 // Check if DOM is already loaded (because script is deferred)
