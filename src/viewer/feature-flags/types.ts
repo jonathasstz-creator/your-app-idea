@@ -8,7 +8,8 @@ export type FeatureFlagName =
   | 'showStepQualityFeedback'
   | 'enableMidiOnboarding'
   | 'hideHud'
-  | 'enableGuestMode';
+  | 'enableGuestMode'
+  | 'resizableSheet';
 
 export type FeatureFlags = Record<FeatureFlagName, boolean>;
 export type FlagSource = 'default' | 'localStorage' | 'remote' | 'runtime';
@@ -34,4 +35,5 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   enableMidiOnboarding: false,
   hideHud: false,
   enableGuestMode: false,
+  resizableSheet: false,
 };

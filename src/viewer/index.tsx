@@ -438,6 +438,8 @@ const init = async () => {
     const flagHideHudToggle = document.getElementById("flag-hide-hud-toggle") as HTMLInputElement | null;
     const flagStepQualityStreakToggle = document.getElementById("flag-step-quality-streak-toggle") as HTMLInputElement | null;
     const flagStepQualityFeedbackToggle = document.getElementById("flag-step-quality-feedback-toggle") as HTMLInputElement | null;
+    const flagResizableSheetToggle = document.getElementById("flag-resizable-sheet-toggle") as HTMLInputElement | null;
+    const sheetResizeHandle = document.getElementById("sheet-resize-handle") as HTMLElement | null;
     const hudGlassEl = document.querySelector<HTMLElement>(".hud-glass");
     const hudActionsEl = document.querySelector<HTMLElement>(".hud-actions");
     const hudRestoreBtn = document.getElementById("hud-restore-btn") as HTMLButtonElement | null;
@@ -544,6 +546,65 @@ const init = async () => {
         flagStepQualityFeedbackToggle.checked = featureFlagSnapshot.showStepQualityFeedback;
         flagStepQualityFeedbackToggle.addEventListener("change", () => {
             featureFlags.set("showStepQualityFeedback", !!flagStepQualityFeedbackToggle.checked, "runtime");
+        });
+    }
+    if (flagResizableSheetToggle) {
+        flagResizableSheetToggle.checked = featureFlagSnapshot.resizableSheet;
+        flagResizableSheetToggle.addEventListener("change", () => {
+            featureFlags.set("resizableSheet", !!flagResizableSheetToggle.checked, "runtime");
+        });
+    }
+
+    // --- Sheet Resize Handle Logic (gated by resizableSheet flag) ---
+    {
+        let isResizing = false;
+        let startY = 0;
+        let startHeight = 0;
+        const SHEET_MIN_H = 120;
+        const SHEET_MAX_H = 700;
+
+        const applyResizableSheet = (enabled: boolean) => {
+            if (sheetResizeHandle) sheetResizeHandle.hidden = !enabled;
+        };
+        applyResizableSheet(featureFlagSnapshot.resizableSheet);
+
+        const onResizeStart = (e: PointerEvent) => {
+            if (!featureFlagSnapshot.resizableSheet) return;
+            e.preventDefault();
+            isResizing = true;
+            startY = e.clientY;
+            startHeight = sheetSection.getBoundingClientRect().height;
+            sheetSection.classList.add('is-resizing');
+            sheetResizeHandle?.classList.add('is-dragging');
+            document.body.style.cursor = 'ns-resize';
+            document.addEventListener('pointermove', onResizeMove);
+            document.addEventListener('pointerup', onResizeEnd);
+        };
+
+        const onResizeMove = (e: PointerEvent) => {
+            if (!isResizing) return;
+            const delta = e.clientY - startY;
+            const newH = Math.max(SHEET_MIN_H, Math.min(SHEET_MAX_H, startHeight + delta));
+            sheetSection.style.height = `${newH}px`;
+        };
+
+        const onResizeEnd = () => {
+            if (!isResizing) return;
+            isResizing = false;
+            sheetSection.classList.remove('is-resizing');
+            sheetResizeHandle?.classList.remove('is-dragging');
+            document.body.style.cursor = '';
+            document.removeEventListener('pointermove', onResizeMove);
+            document.removeEventListener('pointerup', onResizeEnd);
+            // Rebuild mappings after resize
+            rebuildSheetMappings();
+        };
+
+        sheetResizeHandle?.addEventListener('pointerdown', onResizeStart);
+
+        // Subscribe to flag changes for this feature
+        featureFlags.subscribe((next) => {
+            applyResizableSheet(next.resizableSheet);
         });
     }
 
@@ -2173,6 +2234,7 @@ const init = async () => {
         if (flagHideHudToggle) flagHideHudToggle.checked = featureFlagSnapshot.hideHud;
         if (flagStepQualityStreakToggle) flagStepQualityStreakToggle.checked = featureFlagSnapshot.useStepQualityStreak;
         if (flagStepQualityFeedbackToggle) flagStepQualityFeedbackToggle.checked = featureFlagSnapshot.showStepQualityFeedback;
+        if (flagResizableSheetToggle) flagResizableSheetToggle.checked = featureFlagSnapshot.resizableSheet;
         applyHideHud(featureFlagSnapshot.hideHud);
     };
 
