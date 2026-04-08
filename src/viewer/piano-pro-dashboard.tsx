@@ -12,7 +12,6 @@ import {
   BarChart2,
   BookOpen,
   ArrowRight,
-  Clock,
   Award,
 } from "lucide-react";
 import type {
