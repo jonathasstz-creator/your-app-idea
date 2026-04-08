@@ -69,7 +69,7 @@ describe("Bootstrap — Single init guard", () => {
     // if readyState === 'loading' → addEventListener
     // else → call directly
     // This means exactly ONE path fires, never both.
-    const readyState = "complete";
+    const readyState: string = "complete";
     let calls = 0;
 
     if (readyState === "loading") {
@@ -156,7 +156,7 @@ describe("Bootstrap — Boot shell visibility", () => {
     const removeBooting = () => { bootingRemoved = true; };
 
     // Auth phase
-    const authResult = { status: "authenticated" as const };
+    const authResult = { status: "authenticated" as string };
 
     // Init phase
     const initDone = true;
