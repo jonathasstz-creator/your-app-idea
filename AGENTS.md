@@ -2,7 +2,7 @@
 
 Guia operacional para agentes de IA e desenvolvedores que vão trabalhar neste repositório com segurança, contexto e consistência.
 
-> **Última atualização:** 2026-04-06 — API Proxy genérico + backend como fonte única do catálogo.
+> **Última atualização:** 2026-04-08 — HUD UX fixes (score/streak sticky, status priority, Step Quality flag toggles).
 
 ---
 
@@ -21,7 +21,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | Auth & DB | Lovable Cloud (Supabase managed) |
 | MIDI | Web MIDI API (`webmidi-service.ts`) |
 | Sheet Music | OSMD (OpenSheetMusicDisplay) |
-| Testes | Vitest + jsdom (186+ testes, 18 arquivos) |
+| Testes | Vitest + jsdom (339+ testes, 32 arquivos) |
 
 > **Nota:** Este projeto consome um backend FastAPI externo em `api.devoltecomele.com` via Edge Function proxy (`api-proxy`). O catálogo, sessões e analytics vêm do backend (fonte única de verdade). O proxy resolve CORS em preview e produção. `assets/lessons.json` é usado apenas para indexação estática de metadados de trail chapters.
 
@@ -52,7 +52,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | Caminho | Responsabilidade |
 |---------|-----------------|
 | `src/main.tsx` | **Entrypoint real.** Carrega `loadRuntimeConfig()` → valida → importa `src/viewer/index.tsx` |
-| `src/viewer/index.tsx` | Orquestrador principal (~2800 linhas). Monta DOM, inicia MIDI, transport, engine, renderiza Home/Hub/Dashboard/Trainer. |
+| `src/viewer/index.tsx` | Orquestrador principal (~3000 linhas). Monta DOM, inicia MIDI, transport, engine, renderiza Home/Hub/Dashboard/Trainer. |
 | `src/viewer/catalog-service.ts` | **Serviço central de catálogo.** Carrega do backend via `proxyFetchJson('/v1/catalog')`. Sem fallback local — backend é fonte única. Indexa metadados estáticos de `lessons.json` para TrailNavigator. |
 | `src/viewer/catalog/types.ts` | Tipos do catálogo: `Trail`, `TrailLevel`, `TrailModule`, `TrailChapter`, `HandAssignment`. |
 | `src/viewer/catalog/adapter.ts` | Adapter: converte catálogo local → `Trail[]` hierárquico. |
@@ -73,7 +73,7 @@ Permite praticar piano com feedback imediato (HIT/MISS/LATE), rastreamento de pr
 | `src/config/app-config.ts` | Configuração centralizada: `window.__APP_CONFIG__` → `/config.json` → `import.meta.env`. |
 | `src/hooks/useLessons.ts` | Hook React: `buildLocalCatalog()` → `adaptCatalogToTrails()` → `Trail[]`. |
 | `src/pages/LessonsHubPage.tsx` | Página de catálogo React: consome `useLessons()` e renderiza capítulos reais. |
-| `src/viewer/__tests__/` | 18 arquivos de teste Vitest cobrindo regressões críticas. |
+| `src/viewer/__tests__/` | 32 arquivos de teste Vitest cobrindo regressões críticas. |
 | `public/config.json` | Config de runtime (Supabase URL, analytics mode). |
 | `assets/` | Metadados estáticos do currículo. `lessons.json` usado para indexação de trail chapters. **Não é mais fonte primária** — backend é fonte única. |
 | `src/viewer/proxy-fetch.ts` | **Utilitário centralizado de fetch via proxy.** Todas as chamadas `/v1/*` passam por aqui → Edge Function `api-proxy` → backend. Injeta `x-external-auth` + `apikey`. |
@@ -155,13 +155,13 @@ npm run build        # Produção
 
 ### Testes
 ```bash
-npx vitest run                                    # Suíte inteira (186+ testes)
+npx vitest run                                    # Suíte inteira (339+ testes)
 npx vitest run src/viewer/__tests__/              # Apenas testes do viewer
 npx vitest run src/viewer/__tests__/polyphony     # Arquivo específico
 npx vitest --watch                                # Watch mode
 ```
 
-### Cobertura de testes atual (18 arquivos)
+### Cobertura de testes atual (32 arquivos)
 | Arquivo | Cobertura |
 |---------|-----------|
 | `auth-storage.test.ts` | Token extraction, sync, clear, nested structures |
@@ -169,17 +169,32 @@ npx vitest --watch                                # Watch mode
 | `analytics-client.test.ts` | buildHeaders real, fetchOverview, cache, fallback |
 | `badge-independence.test.ts` | MIDI vs Backend badges independentes |
 | `beat-to-x-mapping-fallbacks.test.ts` | Monotonicidade, fallback triggers |
+| `bootstrap-regression.test.ts` | Boot shell, auth gate z-index, single init guard, route activation |
 | `catalog-service.test.ts` | Cache, dedup, chapter→lesson mapping, indexação estática, fallback local |
 | `complete-payload-invariants.test.ts` | local_date São Paulo, fire-once guard |
+| `dashboard-ux-regression.test.tsx` | Dashboard UX rendering |
 | `feature-flags-layers.test.ts` | Precedência de 4 camadas, JSON corrompido |
+| `feature-flags-step-quality-menu-regression.test.ts` | Toggles de Step Quality no menu UI |
+| `feature-flags-subscribe.test.ts` | Subscribe reativo no flag store |
 | `fire-and-forget-complete.test.ts` | POST /complete resiliente a falhas |
 | `hand-split-rule.test.ts` | C4 (60) = mão direita |
+| `hud-score-visibility-regression.test.ts` | Score sticky visibility, não desaparece em FINISHED |
+| `hud-status-priority-regression.test.ts` | FINISHED terminal, não sobrescrito por HIT/WAITING |
+| `hud-streak-combo-regression.test.ts` | Streak sticky, reset sem esconder, não some em FINISHED |
 | `lesson-engine-invariants.test.ts` | Score, streak, AttemptLog, forceEnd |
 | `lesson-engine-timer-integration.test.ts` | Integração engine + timer |
 | `lesson-session-controller.test.ts` | Controlador de sessão |
 | `lesson-timer.test.ts` | Timer unitário |
 | `lesson-timer-regression.test.ts` | Timer básico com fake timers |
+| `midi-onboarding-controller.test.ts` | MIDI onboarding flow controller |
+| `midi-onboarding-runtime.test.tsx` | MIDI onboarding runtime React |
+| `midi-onboarding.test.ts` | MIDI onboarding integration |
 | `polyphony-chords.test.ts` | Chord expansion, PARTIAL_HIT, miss window |
+| `progress-index.test.ts` | Progress index calculations |
+| `step-quality-engine.test.ts` | Step quality classification engine |
+| `step-quality-ui.test.ts` | Step quality UI controllers |
+| `step-quality-wiring-regression.test.ts` | Step quality wiring guards |
+| `task-completion-v2-scoring.test.ts` | V2 scoring contract |
 | `timer-regression-end-state.test.ts` | shouldStartTimer guard, timer pós-ended |
 | `transposition-pipeline.test.ts` | clampMidi, V1/V2, imutabilidade |
 
@@ -344,6 +359,7 @@ featureFlags.init(remoteProvider?)
 | Mapeamento beat→X | `src/viewer/beat-to-x-mapping.ts` |
 | Transposição | `src/viewer/services/lesson-transposer.ts` |
 | Auth storage | `src/viewer/auth-storage.ts` |
+| HUD service | `src/viewer/ui-service.ts` (score/streak sticky, status priority) |
 | Supabase types (auto-gerado) | `src/integrations/supabase/types.ts` (**NÃO editar**) |
 | Supabase client (auto-gerado) | `src/integrations/supabase/client.ts` (**NÃO editar**) |
 
@@ -357,7 +373,7 @@ featureFlags.init(remoteProvider?)
 3. **Respeitar a hierarquia de config:** `window.__APP_CONFIG__` → `/config.json` → `import.meta.env`. Nunca ler `import.meta.env` diretamente fora de `app-config.ts`.
 4. **Preferir mudanças mínimas.** O princípio do projeto é "adaptar o ambiente ao app, não o app ao ambiente."
 5. **Não renomear pastas/arquivos em `src/viewer/`.** A estrutura é preservada para portabilidade entre plataformas.
-6. **Testes obrigatórios** ao mudar `lesson-engine.ts`, `auth-storage.ts`, `analytics-client.ts`, `beat-to-x-mapping.ts`, `lesson-transposer.ts`, `catalog-service.ts`.
+6. **Testes obrigatórios** ao mudar `lesson-engine.ts`, `auth-storage.ts`, `analytics-client.ts`, `beat-to-x-mapping.ts`, `lesson-transposer.ts`, `catalog-service.ts`, `ui-service.ts`.
 7. **Nunca armazenar secrets em código.** Usar `public/config.json` para chaves públicas (anon key).
 8. **Imutabilidade:** `LessonTransposer.transpose()` retorna clone. Engine não muta input. Manter esse padrão.
 9. **Fire-and-forget:** POST `/v1/sessions/{id}/complete` nunca deve bloquear a UI. Falhas são logadas, não lançadas. Guard `completeSent` impede duplicidade.
@@ -391,7 +407,7 @@ featureFlags.init(remoteProvider?)
 
 | Situação | Tipo de teste mínimo |
 |----------|---------------------|
-| Mudança em módulo crítico (`lesson-engine`, `auth-storage`, `analytics-client`, `beat-to-x-mapping`, `lesson-transposer`, `catalog-service`, `taskCompletion`) | Unit test |
+| Mudança em módulo crítico (`lesson-engine`, `auth-storage`, `analytics-client`, `beat-to-x-mapping`, `lesson-transposer`, `catalog-service`, `taskCompletion`, `ui-service`) | Unit test |
 | Bug fix em qualquer módulo | Anti-regression test (deve falhar sem o fix) |
 | Mudança em feature flags | Teste de combinação de flags (ON/OFF matrix) |
 | Mudança em guards de `index.tsx` | Teste de wiring simulando o contrato do handler |
@@ -526,7 +542,16 @@ Regras de handoff:
 - **Armadilha histórica (corrigida 2026-03-12):** controllers eram criados condicionalmente no boot e `featureFlagSnapshot` era congelado no init. Mudanças de flag em runtime não tinham efeito. Fix: criação incondicional + `featureFlags.subscribe()` para manter snapshot vivo.
 - **Arquivos:** `src/viewer/types/step-quality.ts`, `src/viewer/step-quality-ui.ts`, `src/viewer/lesson-engine.ts`, wiring em `src/viewer/index.tsx`.
 
-### Beat-to-X mapping
+### HUD UX — Score/Streak/Status (corrigido 2026-04-08)
+- **Score e Streak usam visibilidade "sticky":** uma vez que `updateHud` recebe `scoreTotal` ou `streak`, o elemento fica visível permanentemente (mesmo se chamadas subsequentes omitirem esses campos, como no `FINISHED`).
+- **Status tem prioridade terminal:** `FINISHED`/`DONE` não podem ser sobrescritos por estados transitórios (`HIT`, `WAITING`, etc.). Apenas `RESET` desbloqueia o status terminal.
+- **RESET limpa todo o estado interno:** flags de sticky visibility, último valor de score/streak, e lock terminal.
+- **Armadilha histórica (corrigida 2026-04-08):** `updateHud({ status: "FINISHED" })` sem `scoreTotal`/`streak` escondia os valores finais. O status piscava entre `HIT` e `WAITING` sem debounce.
+- **Toggles de Step Quality no menu:** `index.html` agora inclui grupo "Step Quality" com toggles para `useStepQualityStreak` e `showStepQualityFeedback`, wired em `index.tsx` via `featureFlags.set()`.
+- **Arquivo:** `src/viewer/ui-service.ts`
+- **Testes:** `hud-score-visibility-regression.test.ts`, `hud-status-priority-regression.test.ts`, `hud-streak-combo-regression.test.ts`, `feature-flags-step-quality-menu-regression.test.ts`
+
+
 - Se a taxa de match entre notas OSMD e steps for < 80%, fallbacks são acionados automaticamente.
 - A monotonicidade (x nunca diminui com beat crescente) é crítica. Se quebrar, falling notes "voltam" na tela.
 - Line breaks (sistemas diferentes na partitura) são tratados com `LINE_BREAK_THRESHOLD`.
@@ -600,6 +625,8 @@ Regras de handoff:
 - ✅ **API Proxy genérico** (`api-proxy`): todas as chamadas `/v1/*` passam pela Edge Function, resolvendo CORS em preview e produção
 - ✅ **Backend como fonte única do catálogo**: `CatalogService` carrega do backend via `proxyFetchJson`, sem fallback local
 - ✅ **`proxyFetch` centralizado**: utilitário único para todas as chamadas REST ao backend
+- ✅ **Bootstrap determinístico** (2026-04-08): boot shell (`app-booting`), guard de inicialização única, auth gate z-index, sem flicker de UI
+- ✅ **HUD UX fixes** (2026-04-08): score/streak sticky visibility, status terminal priority, Step Quality flag toggles no menu
 
 ### Candidato a remoção
 - **`viewer/` (raiz):** Pasta legado inteira. `src/viewer/` é canonical.

@@ -1,5 +1,37 @@
 # Changelog
 
+## [2026-04-08] - HUD UX: Score/Streak Sticky + Status Priority + Step Quality Flag Toggles
+
+### Resumo
+Correção de regressões de UX no HUD do Trainer: score e streak não desaparecem mais ao finalizar lição, status não "pisca" após FINISHED, e toggles de Step Quality foram adicionados ao menu de debug.
+
+### O que mudou
+
+#### `src/viewer/ui-service.ts` (refatorado)
+- **Score/Streak sticky visibility:** uma vez exibidos, permanecem visíveis mesmo se `updateHud` for chamado sem `scoreTotal`/`streak` (ex: estado `FINISHED`).
+- **Status terminal priority:** `FINISHED`/`DONE` bloqueiam sobrescrita por estados transitórios (`HIT`, `WAITING`). Apenas `RESET` desbloqueia.
+- **RESET limpa estado interno:** flags de sticky, último valor, e lock terminal são resetados.
+
+#### `index.html`
+- Novo grupo "Step Quality" no menu de feature flags com toggles para `useStepQualityStreak` e `showStepQualityFeedback`.
+
+#### `src/viewer/index.tsx`
+- Wiring dos novos toggles de Step Quality: leitura do estado inicial das flags + `featureFlags.set()` no `change` handler.
+
+### Testes adicionados (18 novos)
+| Arquivo | Cobertura |
+|---------|-----------|
+| `hud-score-visibility-regression.test.ts` | Score sticky, não desaparece em FINISHED |
+| `hud-status-priority-regression.test.ts` | FINISHED terminal, RESET desbloqueia |
+| `hud-streak-combo-regression.test.ts` | Streak sticky, reset sem esconder |
+| `feature-flags-step-quality-menu-regression.test.ts` | Toggles de Step Quality presentes no menu |
+
+### Impacto
+- HUD previsível e estável durante e após sessão de prática.
+- Feature flags de Step Quality acessíveis sem console.
+
+---
+
 ## [2026-04-06] - Infra: API Proxy genérico + Backend como fonte única do catálogo
 
 ### Resumo
