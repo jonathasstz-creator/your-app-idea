@@ -98,11 +98,17 @@ describe("P0 — Latência em segundos", () => {
     expect(screen.queryByText("120 ms")).toBeNull();
   });
 
-  it("tabela de sessões mostra latência em segundos", () => {
-    render(<Dashboard stats={baseStats} status="live" />);
+  it("tabela de sessões mostra latência em segundos", async () => {
+    const { container } = render(<Dashboard stats={baseStats} status="live" />);
+    // Sessions table is in the "performance" tab
+    const perfTab = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("DESEMPENHO")
+    );
+    await act(async () => { perfTab?.click(); });
+
     // 145ms → 0.15s (rounded)
-    expect(screen.getByText("0.15s")).toBeTruthy();
-    expect(screen.queryByText("145ms")).toBeNull();
+    expect(container.textContent).toContain("0.15s");
+    expect(container.textContent).not.toContain("145ms");
   });
 });
 
