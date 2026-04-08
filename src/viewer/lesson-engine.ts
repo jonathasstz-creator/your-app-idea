@@ -942,6 +942,7 @@ class LessonEngineV2 implements LessonEngineApi {
       this.bestStreak = Math.max(this.bestStreak, this.streak);
       this.currentStep += 1;
       this.stepState.clear();
+      this.chordFirstHitTime = null;
       this.stepQualityState = createStepQualityState();
     } else {
       if (!this.useStepQuality) {
