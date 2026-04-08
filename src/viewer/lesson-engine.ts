@@ -11,6 +11,17 @@ import {
 
 type ResultStatus = 'HIT' | 'MISS' | 'LATE' | 'NONE';
 
+export interface MidiInputResult {
+  advanced: boolean;
+  result: ResultStatus;
+  score: number;
+  streak: number;
+  /** Current chord progress — always from engine's source of truth */
+  chordProgress?: { hit: number; total: number };
+  /** True when chord window timeout fired and partial state was reset */
+  chordReset?: boolean;
+}
+
 // Helper to convert MIDI to note name
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 function midiToNoteName(midi: number): string {
