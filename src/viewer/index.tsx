@@ -2156,27 +2156,38 @@ const init = async () => {
     if (featureFlagSnapshot.showSheetMusic) ensureSheet();
     if (featureFlagSnapshot.showFallingNotes) ensurePianoRoll();
 
+    let prevFlagSnapshot = featureFlags.snapshot();
     featureFlags.subscribe((next, meta) => {
         featureFlagSnapshot = next;
         syncFlagToggles();
         syncEngineStepQualityFlag();
-        if (!next.showSheetMusic) {
-            destroySheet();
-            sheetSection.classList.add('is-hidden');
-        } else {
-            sheetSection.classList.remove('is-hidden');
-            const sheet = ensureSheet();
-            rebuildSheetMappings();
-            if (practiceMode === "FILM" && sheet) {
-                sheet.setFilmMode(true, { pixelsPerBeat: FILM_PIXELS_PER_BEAT });
+
+        // Only rebuild sheet/pianoRoll when their specific flags change (prevents flicker)
+        const sheetChanged = next.showSheetMusic !== prevFlagSnapshot.showSheetMusic;
+        const fallingChanged = next.showFallingNotes !== prevFlagSnapshot.showFallingNotes;
+
+        if (sheetChanged) {
+            if (!next.showSheetMusic) {
+                destroySheet();
+                sheetSection.classList.add('is-hidden');
+            } else {
+                sheetSection.classList.remove('is-hidden');
+                const sheet = ensureSheet();
+                rebuildSheetMappings();
+                if (practiceMode === "FILM" && sheet) {
+                    sheet.setFilmMode(true, { pixelsPerBeat: FILM_PIXELS_PER_BEAT });
+                }
             }
         }
-        if (!next.showFallingNotes) {
-            destroyPianoRoll();
-        } else {
-            ensurePianoRoll();
+        if (fallingChanged) {
+            if (!next.showFallingNotes) {
+                destroyPianoRoll();
+            } else {
+                ensurePianoRoll();
+            }
         }
         applyHideHud(next.hideHud);
+        prevFlagSnapshot = next;
         console.log("[FeatureFlags] update", { source: meta.source, name: meta.name, next });
     });
 
