@@ -438,8 +438,8 @@ export class PianoRollController {
       const relativePos = notePos - this.currentProgress;
       
       // MIDIano-style: Play audio quando falling note chega ao playhead
-      // Toca quando relativePos cruza 0 (nota chegou ao playhead)
-      if (this.audioService && this.audioService.getEnabled()) {
+      // Only auto-plays if user opted in via autoPlayFalling toggle
+      if (this.audioService && this.audioService.getEnabled() && this.audioService.getAutoPlayFalling()) {
         const playheadTolerance = 0.05; // Tolerância para detectar quando chegou ao playhead
         if (relativePos >= -playheadTolerance && relativePos <= playheadTolerance) {
           // Criar ID único para esta nota (midi + step para evitar duplicatas)
