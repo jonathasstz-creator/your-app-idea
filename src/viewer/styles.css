@@ -1482,6 +1482,42 @@ table {
   display: none;
 }
 
+/* --- SHEET RESIZE HANDLE --- */
+.sheet-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  cursor: ns-resize;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom, transparent, rgba(0, 242, 255, 0.08));
+  transition: background 0.15s;
+}
+.sheet-resize-handle:hover,
+.sheet-resize-handle.is-dragging {
+  background: linear-gradient(to bottom, transparent, rgba(0, 242, 255, 0.25));
+  height: 12px;
+}
+.sheet-resize-grip {
+  width: 48px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 242, 255, 0.35);
+  transition: background 0.15s, width 0.15s;
+}
+.sheet-resize-handle:hover .sheet-resize-grip,
+.sheet-resize-handle.is-dragging .sheet-resize-grip {
+  background: rgba(0, 242, 255, 0.7);
+  width: 64px;
+}
+.sheet-section.is-resizing {
+  user-select: none;
+}
+
 /* Minimizar Menu (hideHud flag) */
 .hud-glass.is-minimized {
   display: none !important;
